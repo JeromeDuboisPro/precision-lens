@@ -80,6 +80,11 @@ class PrecisionDashboard {
             const loadPromises = this.precisions.map(async (precision) => {
                 const filename = `${precision}_cond${conditionNumber}_n50.json`;
                 const response = await fetch(`traces/${filename}`);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to load ${filename}: ${response.status} ${response.statusText}`);
+                }
+
                 const data = await response.json();
                 this.traces[precision] = data;
             });
@@ -93,7 +98,14 @@ class PrecisionDashboard {
 
         } catch (error) {
             console.error('Error loading traces:', error);
-            alert('Failed to load trace data. Please refresh the page.');
+            alert(`Failed to load trace data: ${error.message}\n\nPlease check that all trace files exist in the traces/ directory and the page is being served via HTTP/HTTPS.`);
+
+            // Reset status to error
+            this.precisions.forEach(p => {
+                const statusEl = document.getElementById(`status-${p}`);
+                statusEl.textContent = 'Error';
+                statusEl.className = 'px-3 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200';
+            });
         }
     }
 
