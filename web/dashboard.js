@@ -538,12 +538,13 @@ class PrecisionDashboard {
             { label: 'Iterations', key: 'total_iterations', format: (v) => v.toLocaleString() },
             { label: 'Time (ms)', key: 'total_time_seconds', format: (v) => (v * 1000).toFixed(2) },
             { label: 'Time/Iter (ms)', key: 'time_per_iter', format: (v) => v.toFixed(3) },
+            { label: 'Total Time (s)', key: 'total_time_seconds', format: (v) => v.toExponential(2) },
             { label: 'Final Error', key: 'final_error', format: (v) => this.formatError(v) },
             { label: 'Eigenvalue vs FP64', key: 'error_vs_fp64', format: (v) => v },
             { label: 'Avg FLOPS (M)', key: 'avg_flops', format: (v) => (v / 1e6).toFixed(1) },
-            { label: 'Total FLOPS (G)', key: 'total_ops', format: (v) => (v / 1e9).toFixed(2) },
+            { label: 'Total FLOPS', key: 'total_ops', format: (v) => v.toExponential(2) },
             { label: 'Avg BW (GB/s)', key: 'avg_bandwidth_gbps', format: (v) => v.toFixed(2) },
-            { label: 'Total BW (GB)', key: 'total_bytes', format: (v) => (v / 1e9).toFixed(2) },
+            { label: 'Total BW', key: 'total_bytes', format: (v) => v.toExponential(2) },
             { label: 'Converged', key: 'converged', format: (v) => v ? '✓' : '✗' },
             { label: 'Threshold Hit', key: 'threshold_reached', format: (v) => v ? '✓' : '✗' }
         ];
