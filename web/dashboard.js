@@ -132,7 +132,7 @@ class PrecisionDashboard {
         try {
             // Load all four precision traces for this condition number
             const loadPromises = this.precisions.map(async (precision) => {
-                const filename = `${precision}_cond${conditionNumber}_n1000.json`;
+                const filename = `${precision}_cond${conditionNumber}_n50.json`;
                 const response = await fetch(`traces/${filename}`);
 
                 if (!response.ok) {
