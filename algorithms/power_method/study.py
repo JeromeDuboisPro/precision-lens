@@ -144,7 +144,7 @@ def run_convergence_study():
     Run power method convergence study across precisions and condition numbers.
     """
     # Configuration
-    matrix_size = 50
+    matrix_size = 1000
     condition_numbers = [10, 100, 1000]
     max_iterations = 500
 
@@ -215,7 +215,7 @@ def run_precision_degradation_study():
     """
     Study how precision degradation affects final accuracy.
     """
-    matrix_size = 50
+    matrix_size = 1000
     condition_numbers = np.logspace(1, 3, 10)  # 10 to 1000
 
     precisions = [

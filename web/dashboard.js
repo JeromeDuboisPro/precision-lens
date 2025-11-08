@@ -87,8 +87,8 @@ class PrecisionDashboard {
         this.initPlots();
         this.initGauges();
 
-        // Load initial traces (this calls reset() which updates the plots)
-        await this.loadTraces(this.currentCondition);
+        // Don't load traces on startup - wait for user interaction
+        // Traces will be loaded when user changes condition or clicks play
     }
 
     setupEventListeners() {
@@ -132,7 +132,7 @@ class PrecisionDashboard {
         try {
             // Load all four precision traces for this condition number
             const loadPromises = this.precisions.map(async (precision) => {
-                const filename = `${precision}_cond${conditionNumber}_n50.json`;
+                const filename = `${precision}_cond${conditionNumber}_n1000.json`;
                 const response = await fetch(`traces/${filename}`);
 
                 if (!response.ok) {
@@ -318,10 +318,15 @@ class PrecisionDashboard {
         Plotly.newPlot('gauge-bandwidth', [bandwidthGauge], gaugeLayout, gaugeConfig);
     }
 
-    togglePlayPause() {
+    async togglePlayPause() {
         this.playing = !this.playing;
 
         if (this.playing) {
+            // Load traces if they haven't been loaded yet
+            if (Object.keys(this.traces).length === 0) {
+                await this.loadTraces(this.currentCondition);
+            }
+
             this.startAnimation();
             document.getElementById('playIcon').textContent = '⏸';
             document.getElementById('playText').textContent = 'Pause';
@@ -546,7 +551,6 @@ class PrecisionDashboard {
             { label: 'Avg BW (GB/s)', key: 'avg_bandwidth_gbps', format: (v) => v.toFixed(2) },
             { label: 'Total BW', key: 'total_bytes', format: (v) => v.toExponential(2) },
             { label: 'IEEE754 ε', key: 'ieee754_threshold', format: (v) => this.formatError(v) },
-            { label: 'Converged', key: 'converged', format: (v) => v ? '✓' : '✗' },
             { label: 'IEEE754 Threshold', key: 'threshold_reached', format: (v) => v ? '✓' : '✗' }
         ];
 
@@ -561,7 +565,7 @@ class PrecisionDashboard {
                 let value = '—';
 
                 if (trace && trace.metadata && trace.summary) {
-                    if (metric.key === 'final_error' || metric.key === 'converged' || metric.key === 'threshold_reached' || metric.key === 'ieee754_threshold') {
+                    if (metric.key === 'final_error' || metric.key === 'threshold_reached' || metric.key === 'ieee754_threshold') {
                         value = metric.format(trace.metadata[metric.key]);
                     } else if (metric.key === 'time_per_iter') {
                         // Calculate average wall time per iteration in milliseconds
