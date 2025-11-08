@@ -22,9 +22,9 @@ class TestPowerMethodTracerInit:
     def test_initialization_defaults(self):
         """Test initialization with default parameters."""
         tracer = PowerMethodTracer()
-        assert tracer.matrix_size == 50
+        assert tracer.matrix_size == 1000
         assert tracer.condition_number == 100.0
-        assert tracer.matrix.shape == (50, 50)
+        assert tracer.matrix.shape == (1000, 1000)
         assert tracer.true_eigenvalue > 0
 
     def test_initialization_custom_size(self):
