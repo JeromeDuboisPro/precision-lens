@@ -82,15 +82,13 @@ class PrecisionDashboard {
         // Set up event listeners
         this.setupEventListeners();
 
-        // Load initial traces
-        await this.loadTraces(this.currentCondition);
-
-        // Initialize visualizations
+        // Initialize visualizations BEFORE loading data
+        // This ensures plots exist when loadTraces() calls reset()
         this.initPlots();
         this.initGauges();
 
-        // Ready to play
-        this.updateUI();
+        // Load initial traces (this calls reset() which updates the plots)
+        await this.loadTraces(this.currentCondition);
     }
 
     setupEventListeners() {
