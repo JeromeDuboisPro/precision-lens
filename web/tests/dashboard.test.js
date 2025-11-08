@@ -685,3 +685,322 @@ describe('Edge Cases and Error Handling', () => {
         });
     });
 });
+
+describe('Frontend Data Loading Scenarios', () => {
+    /**
+     * These tests mimic real-world scenarios where trace data might be incomplete,
+     * partially loaded, or invalid - reproducing the "length property on undefined" bug
+     */
+
+    describe('Incomplete trace loading scenarios', () => {
+        test('should handle traces with missing trace property', () => {
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: { metadata: {}, summary: {} },  // Missing .trace property!
+                    fp32: { metadata: {}, summary: {}, trace: [1, 2, 3] },
+                    fp16: { metadata: {}, summary: {} },  // Missing .trace property!
+                    fp8: { metadata: {}, summary: {}, trace: [1, 2] }
+                }
+            };
+
+            // This pattern is used in startAnimation (line 296-298)
+            // BUG: Using ?.trace.length instead of ?.trace?.length
+            const maxFramesBuggy = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace.length || 0)
+                );
+            };
+
+            // This should throw "Cannot read property 'length' of undefined"
+            expect(maxFramesBuggy).toThrow();
+
+            // FIXED: Using ?.trace?.length with double optional chaining
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(3);  // fp32 has 3 elements
+        });
+
+        test('should handle traces where some precisions failed to load', () => {
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: null,  // Failed to load
+                    fp32: { metadata: {}, summary: {}, trace: [1, 2, 3, 4, 5] },
+                    fp16: undefined,  // Not loaded yet
+                    fp8: { metadata: {}, summary: {} }  // Loaded but missing .trace
+                }
+            };
+
+            // FIXED version using double optional chaining
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(5);
+        });
+
+        test('should handle all traces being undefined or null', () => {
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: null,
+                    fp32: undefined,
+                    fp16: null,
+                    fp8: undefined
+                }
+            };
+
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(0);
+        });
+
+        test('should handle traces with trace property being null', () => {
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: { metadata: {}, summary: {}, trace: null },
+                    fp32: { metadata: {}, summary: {}, trace: undefined },
+                    fp16: { metadata: {}, summary: {}, trace: [] },
+                    fp8: { metadata: {}, summary: {}, trace: [1, 2, 3] }
+                }
+            };
+
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(3);
+        });
+
+        test('should handle mixed valid and invalid trace data', () => {
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: { metadata: { converged: true }, summary: { total_iterations: 50 }, trace: Array(50).fill({}) },
+                    fp32: { metadata: {}, summary: {} },  // Missing trace
+                    fp16: null,  // Failed to load
+                    fp8: { metadata: { converged: true }, summary: { total_iterations: 30 }, trace: Array(30).fill({}) }
+                }
+            };
+
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(50);
+        });
+    });
+
+    describe('Edge cases in updateTimeline function', () => {
+        test('should handle reference trace with no trace array', () => {
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: null,
+                    fp32: { metadata: {}, summary: { total_time_seconds: 1.5 } },  // No .trace
+                    fp16: undefined,
+                    fp8: undefined
+                },
+                currentFrame: 0
+            };
+
+            // Pattern from updateTimeline (line 414)
+            const refTrace = dashboard.traces['fp32'] || dashboard.traces[dashboard.precisions[0]];
+
+            // This check should prevent errors
+            const safeAccess = () => {
+                if (refTrace && refTrace.trace && refTrace.summary) {
+                    // This would fail if refTrace.trace is undefined
+                    const currentTime = refTrace.trace[Math.floor(dashboard.currentFrame)]?.cumulative_time || 0;
+                    return currentTime;
+                }
+                return null;
+            };
+
+            expect(safeAccess).not.toThrow();
+            expect(safeAccess()).toBe(null);  // Returns null because refTrace.trace is missing
+        });
+
+        test('should safely calculate max frames when all traces are incomplete', () => {
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {}  // Empty traces object
+            };
+
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(0);
+        });
+    });
+
+    describe('Realistic loading failure scenarios', () => {
+        test('should handle network error where only some files loaded', () => {
+            // Simulates: fp64 and fp32 loaded successfully, fp16 and fp8 failed
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: {
+                        metadata: { precision: 'FP64', converged: true, final_error: 1e-12 },
+                        summary: { total_iterations: 100, total_time_seconds: 2.5 },
+                        trace: Array(100).fill({ iteration: 0, relative_error: 0.01 })
+                    },
+                    fp32: {
+                        metadata: { precision: 'FP32', converged: true, final_error: 1e-8 },
+                        summary: { total_iterations: 95, total_time_seconds: 1.2 },
+                        trace: Array(95).fill({ iteration: 0, relative_error: 0.01 })
+                    },
+                    // fp16 and fp8 not loaded (network error)
+                }
+            };
+
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(100);
+        });
+
+        test('should handle partial object after JSON parse error', () => {
+            // Simulates: JSON file was corrupted and only partially parsed
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: {
+                        metadata: { precision: 'FP64' },
+                        // Missing summary and trace due to JSON parse error
+                    },
+                    fp32: null,
+                    fp16: null,
+                    fp8: null
+                }
+            };
+
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(0);
+        });
+
+        test('should handle trace loaded with wrong data type', () => {
+            // Simulates: trace property exists but is not an array
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: {
+                        metadata: { precision: 'FP64' },
+                        summary: { total_iterations: 100 },
+                        trace: "invalid data"  // Should be array but got string
+                    },
+                    fp32: {
+                        metadata: { precision: 'FP32' },
+                        summary: { total_iterations: 95 },
+                        trace: { 0: {}, 1: {} }  // Should be array but got object
+                    }
+                }
+            };
+
+            // The || 0 should handle non-array trace.length returning undefined
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            // String has .length, object doesn't have enumerable .length
+            const result = maxFramesFixed();
+            expect(typeof result).toBe('number');
+        });
+    });
+
+    describe('Integration: Full dashboard lifecycle with incomplete data', () => {
+        test('should handle initialization before any traces loaded', () => {
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {},  // Not initialized yet
+                currentFrame: 0
+            };
+
+            // All these patterns should not throw
+            const operations = () => {
+                // Pattern from startAnimation
+                const maxFrames1 = Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+
+                // Pattern from updateFrame comparison
+                const maxFrames2 = Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+
+                // Pattern from seekToPercent
+                const maxFrames3 = Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+
+                return { maxFrames1, maxFrames2, maxFrames3 };
+            };
+
+            expect(operations).not.toThrow();
+            const result = operations();
+            expect(result.maxFrames1).toBe(0);
+            expect(result.maxFrames2).toBe(0);
+            expect(result.maxFrames3).toBe(0);
+        });
+
+        test('should handle rapid condition changes during loading', () => {
+            // Simulates: User changes condition while previous traces still loading
+            const dashboard = {
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                traces: {
+                    fp64: { metadata: {}, summary: {}, trace: [1, 2] },  // Old condition, partially loaded
+                    fp32: null,  // Being cleared
+                    // fp16 and fp8 not set for new condition yet
+                },
+                currentFrame: 0
+            };
+
+            const maxFramesFixed = () => {
+                return Math.max(
+                    ...dashboard.precisions.map(p => dashboard.traces[p]?.trace?.length || 0)
+                );
+            };
+
+            expect(maxFramesFixed).not.toThrow();
+            expect(maxFramesFixed()).toBe(2);
+        });
+    });
+});

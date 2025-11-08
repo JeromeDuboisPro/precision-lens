@@ -294,7 +294,7 @@ class PrecisionDashboard {
 
             // Find max frames across all precisions
             const maxFrames = Math.max(
-                ...this.precisions.map(p => this.traces[p]?.trace.length || 0)
+                ...this.precisions.map(p => this.traces[p]?.trace?.length || 0)
             );
 
             if (this.currentFrame >= maxFrames) {
@@ -344,7 +344,7 @@ class PrecisionDashboard {
         this.updateTimeline();
 
         // Update comparison table and insights at end
-        if (frameIndex === Math.max(...this.precisions.map(p => this.traces[p]?.trace.length || 0)) - 1) {
+        if (frameIndex === Math.max(...this.precisions.map(p => this.traces[p]?.trace?.length || 0)) - 1) {
             this.updateComparison();
             this.generateInsights();
         }
@@ -523,7 +523,7 @@ class PrecisionDashboard {
 
     seekToPercent(percent) {
         const maxFrames = Math.max(
-            ...this.precisions.map(p => this.traces[p]?.trace.length || 0)
+            ...this.precisions.map(p => this.traces[p]?.trace?.length || 0)
         );
 
         this.currentFrame = Math.floor((percent / 100) * maxFrames);
