@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for headless environments
 import matplotlib.pyplot as plt
+from matplotlib.ticker import LogFormatterMathtext
 from typing import Tuple, List
 import warnings
 
@@ -200,6 +201,7 @@ def run_convergence_study():
         ax.grid(True, alpha=0.3, linestyle='--')
         ax.legend(fontsize=8, loc='best')
         ax.set_ylim([1e-10, 10])
+        ax.yaxis.set_major_formatter(LogFormatterMathtext())
 
     plt.tight_layout()
 
@@ -253,6 +255,8 @@ def run_precision_degradation_study():
     ax.set_title('Precision Impact vs Matrix Condition Number', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3, linestyle='--', which='both')
     ax.legend(fontsize=10, loc='best')
+    ax.xaxis.set_major_formatter(LogFormatterMathtext())
+    ax.yaxis.set_major_formatter(LogFormatterMathtext())
 
     plt.tight_layout()
 
