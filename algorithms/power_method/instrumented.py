@@ -41,7 +41,7 @@ class PowerMethodTracer:
         self.matrix = create_test_matrix(matrix_size, condition_number)
         self.true_eigenvalue = np.max(np.linalg.eigvalsh(self.matrix))
 
-    def run(
+    def run(  # noqa: C901
         self,
         precision_name: str,
         dtype: np.dtype,
