@@ -213,11 +213,11 @@ class PrecisionDashboard {
             Plotly.newPlot(plotDiv, data, layout, config);
         });
 
-        // Initialize comparison plot (FP32, FP16, FP8 error ratios vs FP64)
+        // Initialize comparison plot (FP32, FP16, FP8 eigenvalue errors vs FP64)
         const comparisonLayout = {
             ...layout,
             yaxis: {
-                title: 'Error Ratio (vs FP64)',
+                title: 'Relative Error vs FP64 Eigenvalue',
                 type: 'log',
                 exponentformat: 'power',
                 gridcolor: '#374151',
@@ -439,25 +439,25 @@ class PrecisionDashboard {
             const maxFrame = Math.min(frameIndex, trace.trace.length - 1);
             const data = [];
 
-            // Calculate error ratios for each iteration up to maxFrame
+            // Calculate relative difference between eigenvalues for each iteration up to maxFrame
             for (let i = 0; i <= maxFrame; i++) {
-                const fp64Error = fp64Trace.trace[i]?.relative_error;
-                const precisionError = trace.trace[i]?.relative_error;
+                const fp64Eigenvalue = fp64Trace.trace[i]?.eigenvalue;
+                const precisionEigenvalue = trace.trace[i]?.eigenvalue;
 
-                if (fp64Error && precisionError &&
-                    !isNaN(fp64Error) && !isNaN(precisionError) &&
-                    isFinite(fp64Error) && isFinite(precisionError) &&
-                    fp64Error > 0 && precisionError > 0) {
-                    const ratio = precisionError / fp64Error;
+                if (fp64Eigenvalue && precisionEigenvalue &&
+                    !isNaN(fp64Eigenvalue) && !isNaN(precisionEigenvalue) &&
+                    isFinite(fp64Eigenvalue) && isFinite(precisionEigenvalue) &&
+                    fp64Eigenvalue !== 0) {
+                    const relativeError = Math.abs(precisionEigenvalue - fp64Eigenvalue) / Math.abs(fp64Eigenvalue);
                     data.push({
                         iteration: trace.trace[i].iteration,
-                        ratio: Math.max(ratio, 1e-3)  // Clamp minimum for log scale
+                        relativeError: Math.max(relativeError, 1e-12)  // Clamp minimum for log scale
                     });
                 }
             }
 
             updates.x.push(data.map(d => d.iteration));
-            updates.y.push(data.map(d => d.ratio));
+            updates.y.push(data.map(d => d.relativeError));
         });
 
         Plotly.restyle('plot-comparison', updates, [0, 1, 2]);
@@ -534,7 +534,7 @@ class PrecisionDashboard {
             { label: 'Time (ms)', key: 'total_time_seconds', format: (v) => (v * 1000).toFixed(2) },
             { label: 'Time/Iter (ms)', key: 'time_per_iter', format: (v) => v.toFixed(3) },
             { label: 'Final Error', key: 'final_error', format: (v) => this.formatError(v) },
-            { label: 'Error vs FP64', key: 'error_vs_fp64', format: (v) => `${v.toFixed(1)}×` },
+            { label: 'Eigenvalue vs FP64', key: 'error_vs_fp64', format: (v) => v },
             { label: 'Avg FLOPS (M)', key: 'avg_flops', format: (v) => (v / 1e6).toFixed(1) },
             { label: 'Converged', key: 'converged', format: (v) => v ? '✓' : '✗' }
         ];
@@ -561,13 +561,17 @@ class PrecisionDashboard {
                             value = metric.format(timePerIter);
                         }
                     } else if (metric.key === 'error_vs_fp64') {
-                        // Calculate error ratio compared to FP64
+                        // Calculate eigenvalue difference compared to FP64
                         const fp64Trace = this.traces['fp64'];
                         if (precision === 'fp64') {
-                            value = '1.0×';  // FP64 baseline
-                        } else if (fp64Trace && fp64Trace.metadata && fp64Trace.metadata.final_error > 0) {
-                            const errorRatio = trace.metadata.final_error / fp64Trace.metadata.final_error;
-                            value = metric.format(errorRatio);
+                            value = '—';  // FP64 baseline (no difference with itself)
+                        } else if (fp64Trace && fp64Trace.trace && trace.trace) {
+                            const fp64Eigenvalue = fp64Trace.trace[fp64Trace.trace.length - 1]?.eigenvalue;
+                            const precisionEigenvalue = trace.trace[trace.trace.length - 1]?.eigenvalue;
+                            if (fp64Eigenvalue && precisionEigenvalue && fp64Eigenvalue !== 0) {
+                                const eigenvalueError = Math.abs(precisionEigenvalue - fp64Eigenvalue) / Math.abs(fp64Eigenvalue);
+                                value = this.formatError(eigenvalueError);
+                            }
                         }
                     } else {
                         value = metric.format(trace.summary[metric.key]);
@@ -609,12 +613,17 @@ class PrecisionDashboard {
         const fp16Error = fp16.metadata.final_error;
         const fp8Error = fp8.metadata.final_error;
 
-        // Error comparison vs FP64
-        const fp32ErrorRatio = fp32Error / fp64Error;
-        const fp16ErrorRatio = fp16Error / fp64Error;
-        const fp8ErrorRatio = fp8Error / fp64Error;
+        // Eigenvalue comparison vs FP64
+        const fp64Eigenvalue = fp64.trace[fp64.trace.length - 1]?.eigenvalue || 0;
+        const fp32Eigenvalue = fp32.trace[fp32.trace.length - 1]?.eigenvalue || 0;
+        const fp16Eigenvalue = fp16.trace[fp16.trace.length - 1]?.eigenvalue || 0;
+        const fp8Eigenvalue = fp8.trace[fp8.trace.length - 1]?.eigenvalue || 0;
 
-        insights.push(`<strong>📊 Error vs FP64:</strong> FP32 error is ${fp32ErrorRatio.toFixed(1)}× higher, FP16 is ${fp16ErrorRatio.toFixed(1)}× higher, FP8 is ${fp8ErrorRatio.toFixed(0)}× higher than FP64 baseline.`);
+        const fp32EigenvalueError = fp64Eigenvalue !== 0 ? Math.abs(fp32Eigenvalue - fp64Eigenvalue) / Math.abs(fp64Eigenvalue) : 0;
+        const fp16EigenvalueError = fp64Eigenvalue !== 0 ? Math.abs(fp16Eigenvalue - fp64Eigenvalue) / Math.abs(fp64Eigenvalue) : 0;
+        const fp8EigenvalueError = fp64Eigenvalue !== 0 ? Math.abs(fp8Eigenvalue - fp64Eigenvalue) / Math.abs(fp64Eigenvalue) : 0;
+
+        insights.push(`<strong>📊 Eigenvalue vs FP64:</strong> FP32 differs by ${this.formatError(fp32EigenvalueError)}, FP16 by ${this.formatError(fp16EigenvalueError)}, FP8 by ${this.formatError(fp8EigenvalueError)} from FP64 baseline.`);
 
         if (fp32Error < 1e-5) {
             insights.push(`<strong>✓ FP32 Performance:</strong> Achieves excellent accuracy (${this.formatError(fp32Error)}) with significant speedup — ideal for most applications.`);
