@@ -351,6 +351,7 @@ class PrecisionDashboard {
         const metrics = [
             { label: 'Iterations', key: 'total_iterations', format: (v) => v.toLocaleString() },
             { label: 'Time (ms)', key: 'total_time_seconds', format: (v) => (v * 1000).toFixed(2) },
+            { label: 'Time/Iter (ms)', key: 'time_per_iter', format: (v) => v.toFixed(3) },
             { label: 'Final Error', key: 'final_error', format: (v) => this.formatError(v) },
             { label: 'Avg FLOPS (M)', key: 'avg_flops', format: (v) => (v / 1e6).toFixed(1) },
             { label: 'Converged', key: 'converged', format: (v) => v ? '✓' : '✗' }
@@ -371,6 +372,10 @@ class PrecisionDashboard {
                         value = metric.format(trace.metadata[metric.key]);
                     } else if (metric.key === 'converged') {
                         value = metric.format(trace.metadata[metric.key]);
+                    } else if (metric.key === 'time_per_iter') {
+                        // Calculate average wall time per iteration in milliseconds
+                        const timePerIter = (trace.summary.total_time_seconds / trace.summary.total_iterations) * 1000;
+                        value = metric.format(timePerIter);
                     } else {
                         value = metric.format(trace.summary[metric.key]);
                     }
