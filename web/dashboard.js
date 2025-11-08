@@ -471,6 +471,7 @@ class PrecisionDashboard {
         document.getElementById(`error-${precision}`).textContent = this.formatError(iterData.relative_error);
         document.getElementById(`time-${precision}`).textContent = this.formatTime(iterData.cumulative_time);
         document.getElementById(`flops-${precision}`).textContent = this.formatFlops(iterData.theoretical_flops);
+        document.getElementById(`bandwidth-${precision}`).textContent = this.formatBandwidth(iterData.theoretical_bandwidth_gbps);
     }
 
     updateStatus(precision, trace, frameIndex) {
@@ -479,7 +480,11 @@ class PrecisionDashboard {
         if (!trace || !trace.trace || !Array.isArray(trace.trace) || !trace.metadata) return;
 
         if (frameIndex >= trace.trace.length - 1) {
-            if (trace.metadata.converged) {
+            // Check if threshold was reached
+            if (trace.metadata.threshold_reached) {
+                statusEl.textContent = 'Threshold Reached';
+                statusEl.className = 'px-3 py-1 rounded-full text-xs font-medium bg-purple-900 text-purple-200';
+            } else if (trace.metadata.converged) {
                 statusEl.textContent = 'Converged';
                 statusEl.className = 'px-3 py-1 rounded-full text-xs font-medium status-converged';
             } else {
@@ -536,7 +541,11 @@ class PrecisionDashboard {
             { label: 'Final Error', key: 'final_error', format: (v) => this.formatError(v) },
             { label: 'Eigenvalue vs FP64', key: 'error_vs_fp64', format: (v) => v },
             { label: 'Avg FLOPS (M)', key: 'avg_flops', format: (v) => (v / 1e6).toFixed(1) },
-            { label: 'Converged', key: 'converged', format: (v) => v ? '✓' : '✗' }
+            { label: 'Total FLOPS (G)', key: 'total_ops', format: (v) => (v / 1e9).toFixed(2) },
+            { label: 'Avg BW (GB/s)', key: 'avg_bandwidth_gbps', format: (v) => v.toFixed(2) },
+            { label: 'Total BW (GB)', key: 'total_bytes', format: (v) => (v / 1e9).toFixed(2) },
+            { label: 'Converged', key: 'converged', format: (v) => v ? '✓' : '✗' },
+            { label: 'Threshold Hit', key: 'threshold_reached', format: (v) => v ? '✓' : '✗' }
         ];
 
         metrics.forEach(metric => {
@@ -550,9 +559,7 @@ class PrecisionDashboard {
                 let value = '—';
 
                 if (trace && trace.metadata && trace.summary) {
-                    if (metric.key === 'final_error') {
-                        value = metric.format(trace.metadata[metric.key]);
-                    } else if (metric.key === 'converged') {
+                    if (metric.key === 'final_error' || metric.key === 'converged' || metric.key === 'threshold_reached') {
                         value = metric.format(trace.metadata[metric.key]);
                     } else if (metric.key === 'time_per_iter') {
                         // Calculate average wall time per iteration in milliseconds
@@ -713,6 +720,13 @@ class PrecisionDashboard {
         if (timeSeconds < 1e-3) return `${(timeSeconds * 1e6).toFixed(1)}μs`;
         if (timeSeconds < 1) return `${(timeSeconds * 1e3).toFixed(2)}ms`;
         return `${timeSeconds.toFixed(3)}s`;
+    }
+
+    formatBandwidth(bandwidthGbps) {
+        if (!bandwidthGbps || bandwidthGbps === 0) return '—';
+        if (bandwidthGbps < 0.001) return `${(bandwidthGbps * 1000).toFixed(2)}M`;
+        if (bandwidthGbps < 1) return `${(bandwidthGbps * 1000).toFixed(1)}M`;
+        return `${bandwidthGbps.toFixed(2)}G`;
     }
 }
 

@@ -24,6 +24,14 @@ class PowerMethodTracer:
     Instrumented power method that captures detailed execution trace.
     """
 
+    # IEEE754 precision thresholds - stop when relative error goes below these values
+    IEEE754_THRESHOLDS = {
+        'FP64': 1e-15,
+        'FP32': 1e-7,
+        'FP16': 1e-3,
+        'FP8': 1e-1
+    }
+
     def __init__(self, matrix_size: int = 50, condition_number: float = 100.0):
         """
         Initialize tracer with matrix configuration.
@@ -74,6 +82,11 @@ class PowerMethodTracer:
         trace = []
         converged = False
         convergence_iteration = None
+
+        # IEEE754 threshold tracking
+        ieee754_threshold = self.IEEE754_THRESHOLDS.get(precision_name, None)
+        threshold_reached = False
+        threshold_iteration = None
 
         # Start timing
         start_time = time.perf_counter()
@@ -132,6 +145,12 @@ class PowerMethodTracer:
                     converged = True
                     convergence_iteration = iteration
 
+            # Check IEEE754 precision threshold
+            if ieee754_threshold is not None and relative_error < ieee754_threshold:
+                if not threshold_reached:
+                    threshold_reached = True
+                    threshold_iteration = iteration
+
             # Store iteration data
             trace.append({
                 'iteration': iteration,
@@ -147,6 +166,10 @@ class PowerMethodTracer:
             })
 
             x = x_new
+
+            # Stop if IEEE754 threshold is reached
+            if threshold_reached and threshold_iteration == iteration:
+                break
 
         # Calculate summary statistics
         total_time = time.perf_counter() - start_time
@@ -181,7 +204,10 @@ class PowerMethodTracer:
                 'convergence_iteration': convergence_iteration,
                 'final_error': float(final_error),
                 'tolerance': tol,
-                'max_iterations': max_iter
+                'max_iterations': max_iter,
+                'ieee754_threshold': ieee754_threshold,
+                'threshold_reached': threshold_reached,
+                'threshold_iteration': threshold_iteration
             },
             'trace': trace,
             'summary': {
