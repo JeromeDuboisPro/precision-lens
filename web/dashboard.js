@@ -22,6 +22,62 @@ class PrecisionDashboard {
         this.init();
     }
 
+    /**
+     * Validates trace data structure to ensure it has all required fields
+     * @param {Object} data - The trace data to validate
+     * @returns {Object} { valid: boolean, errors: string[] }
+     */
+    validateTraceData(data) {
+        const errors = [];
+
+        if (!data || typeof data !== 'object') {
+            errors.push('Trace data must be an object');
+            return { valid: false, errors };
+        }
+
+        // Check required top-level properties
+        if (!data.metadata || typeof data.metadata !== 'object') {
+            errors.push('Missing or invalid "metadata" object');
+        }
+        if (!data.trace || !Array.isArray(data.trace)) {
+            errors.push('Missing or invalid "trace" array');
+        }
+        if (!data.summary || typeof data.summary !== 'object') {
+            errors.push('Missing or invalid "summary" object');
+        }
+
+        // If any top-level property is missing, return early
+        if (errors.length > 0) {
+            return { valid: false, errors };
+        }
+
+        // Validate metadata required fields
+        const metadataRequired = ['precision', 'dtype', 'dtype_bytes', 'condition_number',
+                                  'matrix_size', 'converged', 'final_error', 'tolerance', 'max_iterations'];
+        metadataRequired.forEach(field => {
+            if (!(field in data.metadata)) {
+                errors.push(`Missing required metadata field: ${field}`);
+            }
+        });
+
+        // Validate trace array
+        if (data.trace.length === 0) {
+            errors.push('Trace array must have at least one element');
+        }
+
+        // Validate summary required fields
+        const summaryRequired = ['total_iterations', 'total_time_seconds', 'avg_flops',
+                                'peak_flops', 'avg_bandwidth_gbps', 'peak_bandwidth_gbps',
+                                'total_ops', 'total_bytes'];
+        summaryRequired.forEach(field => {
+            if (!(field in data.summary)) {
+                errors.push(`Missing required summary field: ${field}`);
+            }
+        });
+
+        return { valid: errors.length === 0, errors };
+    }
+
     async init() {
         // Set up event listeners
         this.setupEventListeners();
@@ -86,6 +142,13 @@ class PrecisionDashboard {
                 }
 
                 const data = await response.json();
+
+                // Validate the loaded data
+                const validation = this.validateTraceData(data);
+                if (!validation.valid) {
+                    throw new Error(`Invalid trace data in ${filename}:\n${validation.errors.join('\n')}`);
+                }
+
                 this.traces[precision] = data;
             });
 
@@ -255,7 +318,7 @@ class PrecisionDashboard {
     updateFrame(frameIndex) {
         this.precisions.forEach(precision => {
             const trace = this.traces[precision];
-            if (!trace) return;
+            if (!trace || !trace.trace || !Array.isArray(trace.trace) || trace.trace.length === 0) return;
 
             const maxFrame = Math.min(frameIndex, trace.trace.length - 1);
             const currentData = trace.trace.slice(0, maxFrame + 1);
@@ -309,6 +372,8 @@ class PrecisionDashboard {
     updateStatus(precision, trace, frameIndex) {
         const statusEl = document.getElementById(`status-${precision}`);
 
+        if (!trace || !trace.trace || !Array.isArray(trace.trace) || !trace.metadata) return;
+
         if (frameIndex >= trace.trace.length - 1) {
             if (trace.metadata.converged) {
                 statusEl.textContent = 'Converged';
@@ -339,7 +404,7 @@ class PrecisionDashboard {
 
     updateTimeline() {
         const maxFrames = Math.max(
-            ...this.precisions.map(p => this.traces[p]?.trace.length || 0)
+            ...this.precisions.map(p => this.traces[p]?.trace?.length || 0)
         );
 
         const percent = (this.currentFrame / maxFrames) * 100;
@@ -347,7 +412,7 @@ class PrecisionDashboard {
 
         // Update time display
         const refTrace = this.traces['fp32'] || this.traces[this.precisions[0]];
-        if (refTrace) {
+        if (refTrace && refTrace.trace && refTrace.summary) {
             const currentTime = refTrace.trace[Math.floor(this.currentFrame)]?.cumulative_time || 0;
             const maxTime = refTrace.summary.total_time_seconds;
 
@@ -379,15 +444,17 @@ class PrecisionDashboard {
                 const trace = this.traces[precision];
                 let value = '—';
 
-                if (trace) {
+                if (trace && trace.metadata && trace.summary) {
                     if (metric.key === 'final_error') {
                         value = metric.format(trace.metadata[metric.key]);
                     } else if (metric.key === 'converged') {
                         value = metric.format(trace.metadata[metric.key]);
                     } else if (metric.key === 'time_per_iter') {
                         // Calculate average wall time per iteration in milliseconds
-                        const timePerIter = (trace.summary.total_time_seconds / trace.summary.total_iterations) * 1000;
-                        value = metric.format(timePerIter);
+                        if (trace.summary.total_iterations > 0) {
+                            const timePerIter = (trace.summary.total_time_seconds / trace.summary.total_iterations) * 1000;
+                            value = metric.format(timePerIter);
+                        }
                     } else {
                         value = metric.format(trace.summary[metric.key]);
                     }
@@ -410,7 +477,9 @@ class PrecisionDashboard {
         const fp16 = this.traces['fp16'];
         const fp8 = this.traces['fp8'];
 
-        if (!fp64 || !fp32 || !fp16 || !fp8) return;
+        // Validate all traces have required structure
+        const validateTrace = (t) => t && t.summary && t.metadata;
+        if (!validateTrace(fp64) || !validateTrace(fp32) || !validateTrace(fp16) || !validateTrace(fp8)) return;
 
         // Speedup analysis
         const fp64Time = fp64.summary.total_time_seconds;
