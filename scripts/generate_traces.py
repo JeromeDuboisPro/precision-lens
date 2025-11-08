@@ -107,7 +107,7 @@ def main():
     """
     # Generate standard trace library
     generate_all_traces(
-        matrix_size=50,
+        matrix_size=1000,
         condition_numbers=[10, 100, 1000],
         output_dir='algorithms/power_method/traces',
         max_iter=500

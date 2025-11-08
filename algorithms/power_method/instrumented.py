@@ -32,7 +32,7 @@ class PowerMethodTracer:
         'FP8': 1e-1
     }
 
-    def __init__(self, matrix_size: int = 50, condition_number: float = 100.0):
+    def __init__(self, matrix_size: int = 1000, condition_number: float = 100.0):
         """
         Initialize tracer with matrix configuration.
 
@@ -272,7 +272,7 @@ def main():
     print("=" * 70)
 
     # Test single configuration
-    tracer = PowerMethodTracer(matrix_size=50, condition_number=100)
+    tracer = PowerMethodTracer(matrix_size=1000, condition_number=100)
 
     print("\nRunning FP32 trace...")
     trace = tracer.run(
