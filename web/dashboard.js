@@ -351,9 +351,16 @@ class PrecisionDashboard {
     updatePlot(precision, data) {
         const plotDiv = document.getElementById(`plot-${precision}`);
 
+        // Filter out NaN values to prevent plotting issues
+        const validData = data.filter(d =>
+            !isNaN(d.relative_error) &&
+            isFinite(d.relative_error) &&
+            d.relative_error > 0
+        );
+
         const update = {
-            x: [data.map(d => d.iteration)],
-            y: [data.map(d => Math.max(d.relative_error, 1e-12))]  // Clamp to avoid log(0)
+            x: [validData.map(d => d.iteration)],
+            y: [validData.map(d => Math.max(d.relative_error, 1e-12))]  // Clamp to avoid log(0)
         };
 
         Plotly.restyle(plotDiv, update, [0]);
@@ -363,7 +370,9 @@ class PrecisionDashboard {
         if (!iterData) return;
 
         document.getElementById(`iter-${precision}`).textContent = iterData.iteration;
+        document.getElementById(`eigenvalue-${precision}`).textContent = this.formatEigenvalue(iterData.eigenvalue);
         document.getElementById(`error-${precision}`).textContent = this.formatError(iterData.relative_error);
+        document.getElementById(`time-${precision}`).textContent = this.formatTime(iterData.cumulative_time);
         document.getElementById(`flops-${precision}`).textContent = this.formatFlops(iterData.theoretical_flops);
     }
 
@@ -564,6 +573,23 @@ class PrecisionDashboard {
         if (mflops < 1) return `${(flops / 1e3).toFixed(1)}K`;
         if (mflops < 1000) return `${mflops.toFixed(1)}M`;
         return `${(mflops / 1000).toFixed(2)}G`;
+    }
+
+    formatEigenvalue(eigenvalue) {
+        if (isNaN(eigenvalue) || !isFinite(eigenvalue)) return 'NaN';
+        if (eigenvalue === 0) return '0';
+        if (Math.abs(eigenvalue) < 1e-3) return eigenvalue.toExponential(2);
+        if (Math.abs(eigenvalue) < 10) return eigenvalue.toFixed(4);
+        if (Math.abs(eigenvalue) < 1000) return eigenvalue.toFixed(2);
+        return eigenvalue.toFixed(1);
+    }
+
+    formatTime(timeSeconds) {
+        if (isNaN(timeSeconds) || !isFinite(timeSeconds) || timeSeconds < 0) return '—';
+        if (timeSeconds < 1e-6) return `${(timeSeconds * 1e9).toFixed(1)}ns`;
+        if (timeSeconds < 1e-3) return `${(timeSeconds * 1e6).toFixed(1)}μs`;
+        if (timeSeconds < 1) return `${(timeSeconds * 1e3).toFixed(2)}ms`;
+        return `${timeSeconds.toFixed(3)}s`;
     }
 }
 
