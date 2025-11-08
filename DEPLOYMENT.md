@@ -1,53 +1,41 @@
 # Deployment Guide - PrecisionLens Dashboard
 
-## GitHub Pages Deployment
+## GitHub Pages Deployment (Automated via GitHub Actions)
 
-### Option 1: Deploy from `/web` directory (Recommended)
+### Setup Instructions
 
-1. **Merge your branch to main**:
-   ```bash
-   git checkout main
-   git merge claude/precision-lens-setup-011CUvASYBssN7ekg4GCqjYE
-   git push origin main
-   ```
+The repository is configured to automatically deploy the dashboard using GitHub Actions whenever you push to the `main` branch.
 
-2. **Enable GitHub Pages**:
-   - Go to your repository on GitHub
-   - Navigate to **Settings** → **Pages**
-   - Under "Source", select **Deploy from a branch**
-   - Branch: `main`
-   - Folder: `/web`
-   - Click **Save**
+#### 1. Merge your changes to main
 
-3. **Wait for deployment** (~2-3 minutes)
-   - GitHub will automatically build and deploy
-   - Your site will be available at: `https://jeromedubois pro.github.io/precision-lens/`
+```bash
+git checkout main
+git merge claude/github-pages-source-config-011CUvRXsjkVUztLTkt4r6dK
+git push origin main
+```
 
-### Option 2: Deploy from root with custom workflow
+#### 2. Configure GitHub Pages (One-time setup)
 
-If you want to deploy from root and have more control:
+1. Go to your repository on GitHub: `https://github.com/JeromeDuboisPro/precision-lens`
+2. Navigate to **Settings** → **Pages**
+3. Under "Source", select **GitHub Actions**
+4. The workflow will automatically deploy the `/web` directory
 
-1. Create `.github/workflows/deploy.yml`:
-   ```yaml
-   name: Deploy to GitHub Pages
+#### 3. Wait for deployment
 
-   on:
-     push:
-       branches: [ main ]
+- Go to the **Actions** tab to see the deployment progress
+- First deployment takes ~2-3 minutes
+- Subsequent deployments are faster (~1 minute)
+- Your dashboard will be live at: `https://jeromedubois.github.io/precision-lens/`
 
-   jobs:
-     deploy:
-       runs-on: ubuntu-latest
-       steps:
-         - uses: actions/checkout@v3
-         - name: Deploy to GitHub Pages
-           uses: peaceiris/actions-gh-pages@v3
-           with:
-             github_token: ${{ secrets.GITHUB_TOKEN }}
-             publish_dir: ./web
-   ```
+### How it works
 
-2. Commit and push the workflow file
+The `.github/workflows/deploy-pages.yml` workflow:
+- Triggers automatically on every push to `main`
+- Can also be triggered manually from the Actions tab
+- Deploys only the `/web` directory contents
+- Uses official GitHub Pages actions for reliability
+- No build step needed (pure HTML/CSS/JS)
 
 ## Verifying Deployment
 
