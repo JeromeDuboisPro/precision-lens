@@ -8,11 +8,12 @@ Tests cover:
 - _time_to_error() threshold detection
 - JSON serialization and file I/O
 """
-import pytest
-import numpy as np
+
 import json
-import tempfile
 import os
+import tempfile
+
+import numpy as np
 from instrumented import PowerMethodTracer
 
 
@@ -61,82 +62,91 @@ class TestPowerMethodTracerRun:
     def test_run_basic_fp64(self):
         """Test basic run with FP64 precision."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=100)
+        trace = tracer.run("FP64", np.float64, max_iter=100)
 
         # Verify trace structure
-        assert 'metadata' in trace
-        assert 'trace' in trace
-        assert 'summary' in trace
+        assert "metadata" in trace
+        assert "trace" in trace
+        assert "summary" in trace
 
         # Verify metadata
-        assert trace['metadata']['precision'] == 'FP64'
-        assert trace['metadata']['matrix_size'] == 10
-        assert trace['metadata']['condition_number'] == 10.0
+        assert trace["metadata"]["precision"] == "FP64"
+        assert trace["metadata"]["matrix_size"] == 10
+        assert trace["metadata"]["condition_number"] == 10.0
 
         # Verify trace is non-empty
-        assert len(trace['trace']) > 0
+        assert len(trace["trace"]) > 0
 
     def test_run_fp32(self):
         """Test run with FP32 precision."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP32', np.float32, max_iter=100)
+        trace = tracer.run("FP32", np.float32, max_iter=100)
 
-        assert trace['metadata']['precision'] == 'FP32'
-        assert trace['metadata']['dtype_bytes'] == 4
-        assert len(trace['trace']) > 0
+        assert trace["metadata"]["precision"] == "FP32"
+        assert trace["metadata"]["dtype_bytes"] == 4
+        assert len(trace["trace"]) > 0
 
     def test_run_fp16(self):
         """Test run with FP16 precision."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP16', np.float16, max_iter=100)
+        trace = tracer.run("FP16", np.float16, max_iter=100)
 
-        assert trace['metadata']['precision'] == 'FP16'
-        assert trace['metadata']['dtype_bytes'] == 2
-        assert len(trace['trace']) > 0
+        assert trace["metadata"]["precision"] == "FP16"
+        assert trace["metadata"]["dtype_bytes"] == 2
+        assert len(trace["trace"]) > 0
 
     def test_run_fp8_simulation(self):
         """Test run with FP8 simulation."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP8', np.float32, simulate_fp8_flag=True, max_iter=100)
+        trace = tracer.run("FP8", np.float32, simulate_fp8_flag=True, max_iter=100)
 
-        assert trace['metadata']['precision'] == 'FP8'
-        assert trace['metadata']['dtype_bytes'] == 1  # FP8 should be 1 byte
-        assert len(trace['trace']) > 0
+        assert trace["metadata"]["precision"] == "FP8"
+        assert trace["metadata"]["dtype_bytes"] == 1  # FP8 should be 1 byte
+        assert len(trace["trace"]) > 0
 
     def test_trace_iteration_data_structure(self):
         """Test that each iteration has required fields."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=50)
+        trace = tracer.run("FP64", np.float64, max_iter=50)
 
         required_fields = [
-            'iteration', 'wall_time', 'cumulative_time', 'eigenvalue',
-            'relative_error', 'vector_norm', 'theoretical_flops',
-            'theoretical_bandwidth_gbps', 'ops_count', 'bytes_transferred'
+            "iteration",
+            "wall_time",
+            "cumulative_time",
+            "eigenvalue",
+            "relative_error",
+            "vector_norm",
+            "theoretical_flops",
+            "theoretical_bandwidth_gbps",
+            "ops_count",
+            "bytes_transferred",
         ]
 
-        for iteration_data in trace['trace']:
+        for iteration_data in trace["trace"]:
             for field in required_fields:
                 assert field in iteration_data
 
     def test_relative_error_calculation(self):
         """Test that relative error is calculated correctly."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=100)
+        trace = tracer.run("FP64", np.float64, max_iter=100)
 
-        for iteration_data in trace['trace']:
-            eigenvalue = iteration_data['eigenvalue']
-            relative_error = iteration_data['relative_error']
-            expected_error = abs(eigenvalue - tracer.true_eigenvalue) / abs(tracer.true_eigenvalue)
+        for iteration_data in trace["trace"]:
+            eigenvalue = iteration_data["eigenvalue"]
+            relative_error = iteration_data["relative_error"]
+            expected_error = abs(eigenvalue - tracer.true_eigenvalue) / abs(
+                tracer.true_eigenvalue
+            )
             assert abs(relative_error - expected_error) < 1e-10
 
     def test_flops_calculation_no_division_by_zero(self):
         """Test that FLOPS calculation handles zero duration."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=50)
+        trace = tracer.run("FP64", np.float64, max_iter=50)
 
         # All FLOPS values should be non-negative (zero is acceptable if duration is 0)
-        for iteration_data in trace['trace']:
-            flops = iteration_data['theoretical_flops']
+        for iteration_data in trace["trace"]:
+            flops = iteration_data["theoretical_flops"]
             assert flops >= 0
             assert not np.isnan(flops)
             assert not np.isinf(flops)
@@ -144,11 +154,11 @@ class TestPowerMethodTracerRun:
     def test_bandwidth_calculation_no_division_by_zero(self):
         """Test that bandwidth calculation handles zero duration."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=50)
+        trace = tracer.run("FP64", np.float64, max_iter=50)
 
         # All bandwidth values should be non-negative
-        for iteration_data in trace['trace']:
-            bandwidth = iteration_data['theoretical_bandwidth_gbps']
+        for iteration_data in trace["trace"]:
+            bandwidth = iteration_data["theoretical_bandwidth_gbps"]
             assert bandwidth >= 0
             assert not np.isnan(bandwidth)
             assert not np.isinf(bandwidth)
@@ -156,103 +166,103 @@ class TestPowerMethodTracerRun:
     def test_cumulative_time_monotonic(self):
         """Test that cumulative time is monotonically increasing."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=50)
+        trace = tracer.run("FP64", np.float64, max_iter=50)
 
-        cumulative_times = [t['cumulative_time'] for t in trace['trace']]
+        cumulative_times = [t["cumulative_time"] for t in trace["trace"]]
         for i in range(1, len(cumulative_times)):
-            assert cumulative_times[i] >= cumulative_times[i-1]
+            assert cumulative_times[i] >= cumulative_times[i - 1]
 
     def test_convergence_detection(self):
         """Test that convergence is properly detected."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=500, tol=1e-6)
+        trace = tracer.run("FP64", np.float64, max_iter=500, tol=1e-6)
 
         # For well-conditioned matrix, should converge
-        if trace['metadata']['converged']:
-            assert trace['metadata']['convergence_iteration'] is not None
-            assert trace['metadata']['convergence_iteration'] < 500
+        if trace["metadata"]["converged"]:
+            assert trace["metadata"]["convergence_iteration"] is not None
+            assert trace["metadata"]["convergence_iteration"] < 500
 
     def test_max_iterations_respected(self):
         """Test that max_iter limit is respected."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
         max_iter = 30
-        trace = tracer.run('FP64', np.float64, max_iter=max_iter)
+        trace = tracer.run("FP64", np.float64, max_iter=max_iter)
 
-        assert len(trace['trace']) <= max_iter
-        assert trace['summary']['total_iterations'] <= max_iter
+        assert len(trace["trace"]) <= max_iter
+        assert trace["summary"]["total_iterations"] <= max_iter
 
     def test_summary_statistics(self):
         """Test that summary statistics are computed correctly."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=50)
+        trace = tracer.run("FP64", np.float64, max_iter=50)
 
-        summary = trace['summary']
+        summary = trace["summary"]
 
         # Check required summary fields
-        assert 'total_iterations' in summary
-        assert 'total_time_seconds' in summary
-        assert 'avg_flops' in summary
-        assert 'peak_flops' in summary
-        assert 'avg_bandwidth_gbps' in summary
-        assert 'peak_bandwidth_gbps' in summary
+        assert "total_iterations" in summary
+        assert "total_time_seconds" in summary
+        assert "avg_flops" in summary
+        assert "peak_flops" in summary
+        assert "avg_bandwidth_gbps" in summary
+        assert "peak_bandwidth_gbps" in summary
 
         # Verify total iterations matches trace length
-        assert summary['total_iterations'] == len(trace['trace'])
+        assert summary["total_iterations"] == len(trace["trace"])
 
         # Verify time values are reasonable
-        assert summary['total_time_seconds'] > 0
-        assert summary['total_time_seconds'] < 100  # Should not take 100+ seconds
+        assert summary["total_time_seconds"] > 0
+        assert summary["total_time_seconds"] < 100  # Should not take 100+ seconds
 
     def test_ops_count_correct(self):
         """Test that operations count is calculated correctly."""
         n = 15
         tracer = PowerMethodTracer(matrix_size=n, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=10)
+        trace = tracer.run("FP64", np.float64, max_iter=10)
 
         expected_ops = 2 * n * n + n
-        for iteration_data in trace['trace']:
-            assert iteration_data['ops_count'] == expected_ops
+        for iteration_data in trace["trace"]:
+            assert iteration_data["ops_count"] == expected_ops
 
     def test_bytes_transferred_correct(self):
         """Test that bytes transferred is calculated correctly."""
         n = 20
         tracer = PowerMethodTracer(matrix_size=n, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=10)
+        trace = tracer.run("FP64", np.float64, max_iter=10)
 
         # FP64 is 8 bytes per element
         expected_bytes = (n * n + 2 * n) * 8
-        for iteration_data in trace['trace']:
-            assert iteration_data['bytes_transferred'] == expected_bytes
+        for iteration_data in trace["trace"]:
+            assert iteration_data["bytes_transferred"] == expected_bytes
 
     def test_bytes_transferred_fp32(self):
         """Test bytes transferred for FP32."""
         n = 20
         tracer = PowerMethodTracer(matrix_size=n, condition_number=10)
-        trace = tracer.run('FP32', np.float32, max_iter=10)
+        trace = tracer.run("FP32", np.float32, max_iter=10)
 
         # FP32 is 4 bytes per element
         expected_bytes = (n * n + 2 * n) * 4
-        for iteration_data in trace['trace']:
-            assert iteration_data['bytes_transferred'] == expected_bytes
+        for iteration_data in trace["trace"]:
+            assert iteration_data["bytes_transferred"] == expected_bytes
 
     def test_bytes_transferred_fp8(self):
         """Test bytes transferred for simulated FP8."""
         n = 20
         tracer = PowerMethodTracer(matrix_size=n, condition_number=10)
-        trace = tracer.run('FP8', np.float32, simulate_fp8_flag=True, max_iter=10)
+        trace = tracer.run("FP8", np.float32, simulate_fp8_flag=True, max_iter=10)
 
         # FP8 is 1 byte per element
         expected_bytes = (n * n + 2 * n) * 1
-        for iteration_data in trace['trace']:
-            assert iteration_data['bytes_transferred'] == expected_bytes
+        for iteration_data in trace["trace"]:
+            assert iteration_data["bytes_transferred"] == expected_bytes
 
     def test_final_error_in_metadata(self):
         """Test that final error is stored in metadata."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=100)
+        trace = tracer.run("FP64", np.float64, max_iter=100)
 
-        final_error = trace['metadata']['final_error']
-        last_trace_error = trace['trace'][-1]['relative_error']
+        final_error = trace["metadata"]["final_error"]
+        last_trace_error = trace["trace"][-1]["relative_error"]
 
         assert abs(final_error - last_trace_error) < 1e-10
 
@@ -262,10 +272,10 @@ class TestPowerMethodTracerRun:
         # Not testing this directly as create_test_matrix ensures positive eigenvalues
         # But we can test relative error doesn't become inf/nan
         tracer = PowerMethodTracer(matrix_size=5, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=50)
+        trace = tracer.run("FP64", np.float64, max_iter=50)
 
-        for iteration_data in trace['trace']:
-            assert not np.isinf(iteration_data['relative_error'])
+        for iteration_data in trace["trace"]:
+            assert not np.isinf(iteration_data["relative_error"])
             # NaN is possible if eigenvalue estimate is exactly true_eigenvalue
 
 
@@ -307,9 +317,7 @@ class TestTimeToError:
     def test_time_to_error_first_iteration(self):
         """Test when first iteration already meets threshold."""
         tracer = PowerMethodTracer(matrix_size=10, condition_number=10)
-        trace = [
-            {'iteration': 0, 'relative_error': 1e-10, 'cumulative_time': 0.001}
-        ]
+        trace = [{"iteration": 0, "relative_error": 1e-10, "cumulative_time": 0.001}]
         time = tracer._time_to_error(trace, 1e-6)
         assert time == 0.001
 
@@ -327,10 +335,10 @@ class TestSaveTrace:
     def test_save_trace_creates_file(self):
         """Test that trace is saved to JSON file."""
         tracer = PowerMethodTracer(matrix_size=5, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=10)
+        trace = tracer.run("FP64", np.float64, max_iter=10)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, 'test_trace.json')
+            output_path = os.path.join(tmpdir, "test_trace.json")
             tracer.save_trace(trace, output_path)
 
             # Verify file exists
@@ -339,27 +347,27 @@ class TestSaveTrace:
     def test_save_trace_json_valid(self):
         """Test that saved JSON is valid and loadable."""
         tracer = PowerMethodTracer(matrix_size=5, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=10)
+        trace = tracer.run("FP64", np.float64, max_iter=10)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, 'test_trace.json')
+            output_path = os.path.join(tmpdir, "test_trace.json")
             tracer.save_trace(trace, output_path)
 
             # Load and verify
-            with open(output_path, 'r') as f:
+            with open(output_path, "r") as f:
                 loaded_trace = json.load(f)
 
-            assert loaded_trace['metadata']['precision'] == 'FP64'
-            assert len(loaded_trace['trace']) == len(trace['trace'])
+            assert loaded_trace["metadata"]["precision"] == "FP64"
+            assert len(loaded_trace["trace"]) == len(trace["trace"])
 
     def test_save_trace_creates_directory(self):
         """Test that missing directories are created."""
         tracer = PowerMethodTracer(matrix_size=5, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=10)
+        trace = tracer.run("FP64", np.float64, max_iter=10)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Use nested directory that doesn't exist
-            output_path = os.path.join(tmpdir, 'subdir', 'nested', 'test_trace.json')
+            output_path = os.path.join(tmpdir, "subdir", "nested", "test_trace.json")
             tracer.save_trace(trace, output_path)
 
             # Verify file exists
@@ -368,39 +376,56 @@ class TestSaveTrace:
     def test_save_trace_numpy_types_serializable(self):
         """Test that numpy types are properly serialized to JSON."""
         tracer = PowerMethodTracer(matrix_size=5, condition_number=10)
-        trace = tracer.run('FP64', np.float64, max_iter=10)
+        trace = tracer.run("FP64", np.float64, max_iter=10)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, 'test_trace.json')
+            output_path = os.path.join(tmpdir, "test_trace.json")
             tracer.save_trace(trace, output_path)
 
             # Load and verify all numeric types are Python types
-            with open(output_path, 'r') as f:
+            with open(output_path, "r") as f:
                 loaded_trace = json.load(f)
 
             # Check that numeric values are proper JSON types
-            assert isinstance(loaded_trace['metadata']['condition_number'], (int, float))
-            assert isinstance(loaded_trace['summary']['total_iterations'], int)
-            assert isinstance(loaded_trace['summary']['total_time_seconds'], float)
+            assert isinstance(
+                loaded_trace["metadata"]["condition_number"], (int, float)
+            )
+            assert isinstance(loaded_trace["summary"]["total_iterations"], int)
+            assert isinstance(loaded_trace["summary"]["total_time_seconds"], float)
 
     def test_save_trace_preserves_data(self):
         """Test that all trace data is preserved in saved file."""
         tracer = PowerMethodTracer(matrix_size=5, condition_number=10)
-        trace = tracer.run('FP32', np.float32, max_iter=10)
+        trace = tracer.run("FP32", np.float32, max_iter=10)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            output_path = os.path.join(tmpdir, 'test_trace.json')
+            output_path = os.path.join(tmpdir, "test_trace.json")
             tracer.save_trace(trace, output_path)
 
-            with open(output_path, 'r') as f:
+            with open(output_path, "r") as f:
                 loaded_trace = json.load(f)
 
             # Verify key data is preserved
-            assert loaded_trace['metadata']['matrix_size'] == trace['metadata']['matrix_size']
-            assert loaded_trace['summary']['total_iterations'] == trace['summary']['total_iterations']
-            assert len(loaded_trace['trace']) == len(trace['trace'])
+            assert (
+                loaded_trace["metadata"]["matrix_size"]
+                == trace["metadata"]["matrix_size"]
+            )
+            assert (
+                loaded_trace["summary"]["total_iterations"]
+                == trace["summary"]["total_iterations"]
+            )
+            assert len(loaded_trace["trace"]) == len(trace["trace"])
 
             # Verify a few iteration data points
             for i in [0, -1]:
-                assert loaded_trace['trace'][i]['iteration'] == trace['trace'][i]['iteration']
-                assert abs(loaded_trace['trace'][i]['eigenvalue'] - trace['trace'][i]['eigenvalue']) < 1e-6
+                assert (
+                    loaded_trace["trace"][i]["iteration"]
+                    == trace["trace"][i]["iteration"]
+                )
+                assert (
+                    abs(
+                        loaded_trace["trace"][i]["eigenvalue"]
+                        - trace["trace"][i]["eigenvalue"]
+                    )
+                    < 1e-6
+                )

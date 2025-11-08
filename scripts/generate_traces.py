@@ -6,21 +6,22 @@ Generates comprehensive trace library for all precision × condition number
 combinations to be used by the web dashboard.
 """
 
-import numpy as np
-import sys
 import os
+import sys
+
+import numpy as np
 
 # Add parent directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from algorithms.power_method.instrumented import PowerMethodTracer
+from algorithms.power_method.instrumented import PowerMethodTracer  # noqa: E402
 
 
 def generate_all_traces(
     matrix_size: int = 50,
     condition_numbers: list = None,
-    output_dir: str = 'algorithms/power_method/traces',
-    max_iter: int = 500
+    output_dir: str = "algorithms/power_method/traces",
+    max_iter: int = 500,
 ):
     """
     Generate all trace files for the precision-lens dashboard.
@@ -37,16 +38,16 @@ def generate_all_traces(
     # Precision configurations
     # (name, dtype, simulate_fp8_flag)
     precisions = [
-        ('fp64', np.float64, False),
-        ('fp32', np.float32, False),
-        ('fp16', np.float16, False),
-        ('fp8', np.float32, True),  # FP8 is simulated using FP32
+        ("fp64", np.float64, False),
+        ("fp32", np.float32, False),
+        ("fp16", np.float16, False),
+        ("fp8", np.float32, True),  # FP8 is simulated using FP32
     ]
 
     print("=" * 70)
     print("BATCH TRACE GENERATION")
     print("=" * 70)
-    print(f"\nConfiguration:")
+    print("\nConfiguration:")
     print(f"  Matrix size: {matrix_size}")
     print(f"  Condition numbers: {condition_numbers}")
     print(f"  Precisions: {[p[0].upper() for p in precisions]}")
@@ -68,14 +69,14 @@ def generate_all_traces(
         for precision_name, dtype, simulate_fp8_flag in precisions:
             precision_label = precision_name.upper()
             try:
-                print(f"\n  Running {precision_label}...", end=' ')
+                print(f"\n  Running {precision_label}...", end=" ")
 
                 # Run trace
                 trace = tracer.run(
                     precision_name=precision_label,
                     dtype=dtype,
                     simulate_fp8_flag=simulate_fp8_flag,
-                    max_iter=max_iter
+                    max_iter=max_iter,
                 )
 
                 # Generate filename
@@ -109,8 +110,8 @@ def main():
     generate_all_traces(
         matrix_size=1000,
         condition_numbers=[10, 100, 1000],
-        output_dir='algorithms/power_method/traces',
-        max_iter=500
+        output_dir="algorithms/power_method/traces",
+        max_iter=500,
     )
 
     print("\n" + "=" * 70)
@@ -118,5 +119,5 @@ def main():
     print("=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

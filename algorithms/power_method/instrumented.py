@@ -6,17 +6,18 @@ Captures complete execution trace including timing, FLOPS, memory bandwidth,
 and convergence history for visualization and analysis.
 """
 
-import numpy as np
-import time
 import json
-from typing import Dict, List, Tuple, Optional
-from datetime import datetime
-import sys
 import os
+import sys
+import time
+from datetime import datetime
+from typing import Dict, List, Optional
+
+import numpy as np
 
 # Add parent directory to path to import from study.py
 sys.path.insert(0, os.path.dirname(__file__))
-from study import simulate_fp8, create_test_matrix
+from study import create_test_matrix, simulate_fp8  # noqa: E402
 
 
 class PowerMethodTracer:
@@ -25,12 +26,7 @@ class PowerMethodTracer:
     """
 
     # IEEE754 precision thresholds - stop when relative error goes below these values
-    IEEE754_THRESHOLDS = {
-        'FP64': 1e-15,
-        'FP32': 1e-7,
-        'FP16': 1e-3,
-        'FP8': 1e-1
-    }
+    IEEE754_THRESHOLDS = {"FP64": 1e-15, "FP32": 1e-7, "FP16": 1e-3, "FP8": 1e-1}
 
     def __init__(self, matrix_size: int = 1000, condition_number: float = 100.0):
         """
@@ -45,9 +41,14 @@ class PowerMethodTracer:
         self.matrix = create_test_matrix(matrix_size, condition_number)
         self.true_eigenvalue = np.max(np.linalg.eigvalsh(self.matrix))
 
-    def run(self, precision_name: str, dtype: np.dtype,
-            simulate_fp8_flag: bool = False, max_iter: int = 1000,
-            tol: float = 1e-10) -> Dict:
+    def run(
+        self,
+        precision_name: str,
+        dtype: np.dtype,
+        simulate_fp8_flag: bool = False,
+        max_iter: int = 1000,
+        tol: float = 1e-10,
+    ) -> Dict:
         """
         Execute power method with complete instrumentation.
 
@@ -69,7 +70,9 @@ class PowerMethodTracer:
             np.float64: 8,
             np.float32: 4,
             np.float16: 2,
-        }.get(dtype, 4)  # Default to 4 for FP8 simulation
+        }.get(
+            dtype, 4
+        )  # Default to 4 for FP8 simulation
 
         if simulate_fp8_flag:
             dtype_bytes = 1  # Simulated FP8
@@ -112,7 +115,9 @@ class PowerMethodTracer:
             eigenvalue = float(np.dot(x_new, x))
 
             # Calculate relative error
-            relative_error = abs(eigenvalue - self.true_eigenvalue) / abs(self.true_eigenvalue)
+            relative_error = abs(eigenvalue - self.true_eigenvalue) / abs(
+                self.true_eigenvalue
+            )
 
             # Normalize
             norm = np.linalg.norm(x_new)
@@ -137,10 +142,12 @@ class PowerMethodTracer:
             # Write: x_new (n elements)
             # Total: (n^2 + 2n) elements
             bytes_transferred = (n * n + 2 * n) * dtype_bytes
-            bandwidth_gbps = (bytes_transferred / iter_duration / 1e9) if iter_duration > 0 else 0
+            bandwidth_gbps = (
+                (bytes_transferred / iter_duration / 1e9) if iter_duration > 0 else 0
+            )
 
             # Check convergence
-            if iteration > 0 and abs(trace[-1]['eigenvalue'] - eigenvalue) < tol:
+            if iteration > 0 and abs(trace[-1]["eigenvalue"] - eigenvalue) < tol:
                 if not converged:
                     converged = True
                     convergence_iteration = iteration
@@ -152,18 +159,20 @@ class PowerMethodTracer:
                     threshold_iteration = iteration
 
             # Store iteration data
-            trace.append({
-                'iteration': iteration,
-                'wall_time': iter_duration,
-                'cumulative_time': cumulative_time,
-                'eigenvalue': eigenvalue,
-                'relative_error': relative_error,
-                'vector_norm': float(norm),
-                'theoretical_flops': flops,
-                'theoretical_bandwidth_gbps': bandwidth_gbps,
-                'ops_count': ops_per_iteration,
-                'bytes_transferred': bytes_transferred
-            })
+            trace.append(
+                {
+                    "iteration": iteration,
+                    "wall_time": iter_duration,
+                    "cumulative_time": cumulative_time,
+                    "eigenvalue": eigenvalue,
+                    "relative_error": relative_error,
+                    "vector_norm": float(norm),
+                    "theoretical_flops": flops,
+                    "theoretical_bandwidth_gbps": bandwidth_gbps,
+                    "ops_count": ops_per_iteration,
+                    "bytes_transferred": bytes_transferred,
+                }
+            )
 
             x = x_new
 
@@ -174,7 +183,7 @@ class PowerMethodTracer:
         # Calculate summary statistics
         total_time = time.perf_counter() - start_time
         total_iterations = len(trace)
-        final_error = trace[-1]['relative_error'] if trace else float('nan')
+        final_error = trace[-1]["relative_error"] if trace else float("nan")
 
         # Time to reach error thresholds
         time_to_1e3 = self._time_to_error(trace, 1e-3)
@@ -182,8 +191,14 @@ class PowerMethodTracer:
         time_to_1e9 = self._time_to_error(trace, 1e-9)
 
         # Average/peak performance
-        flops_values = [t['theoretical_flops'] for t in trace if t['theoretical_flops'] > 0]
-        bandwidth_values = [t['theoretical_bandwidth_gbps'] for t in trace if t['theoretical_bandwidth_gbps'] > 0]
+        flops_values = [
+            t["theoretical_flops"] for t in trace if t["theoretical_flops"] > 0
+        ]
+        bandwidth_values = [
+            t["theoretical_bandwidth_gbps"]
+            for t in trace
+            if t["theoretical_bandwidth_gbps"] > 0
+        ]
 
         avg_flops = np.mean(flops_values) if flops_values else 0
         peak_flops = np.max(flops_values) if flops_values else 0
@@ -192,42 +207,44 @@ class PowerMethodTracer:
 
         # Build complete trace document
         trace_document = {
-            'metadata': {
-                'precision': precision_name,
-                'dtype': str(dtype),
-                'dtype_bytes': dtype_bytes,
-                'condition_number': float(self.condition_number),
-                'matrix_size': self.matrix_size,
-                'true_eigenvalue': float(self.true_eigenvalue),
-                'timestamp': datetime.utcnow().isoformat() + 'Z',
-                'converged': converged,
-                'convergence_iteration': convergence_iteration,
-                'final_error': float(final_error),
-                'tolerance': tol,
-                'max_iterations': max_iter,
-                'ieee754_threshold': ieee754_threshold,
-                'threshold_reached': threshold_reached,
-                'threshold_iteration': threshold_iteration
+            "metadata": {
+                "precision": precision_name,
+                "dtype": str(dtype),
+                "dtype_bytes": dtype_bytes,
+                "condition_number": float(self.condition_number),
+                "matrix_size": self.matrix_size,
+                "true_eigenvalue": float(self.true_eigenvalue),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "converged": converged,
+                "convergence_iteration": convergence_iteration,
+                "final_error": float(final_error),
+                "tolerance": tol,
+                "max_iterations": max_iter,
+                "ieee754_threshold": ieee754_threshold,
+                "threshold_reached": threshold_reached,
+                "threshold_iteration": threshold_iteration,
             },
-            'trace': trace,
-            'summary': {
-                'total_iterations': total_iterations,
-                'total_time_seconds': total_time,
-                'time_to_1e3_error': time_to_1e3,
-                'time_to_1e6_error': time_to_1e6,
-                'time_to_1e9_error': time_to_1e9,
-                'avg_flops': float(avg_flops),
-                'peak_flops': float(peak_flops),
-                'avg_bandwidth_gbps': float(avg_bandwidth),
-                'peak_bandwidth_gbps': float(peak_bandwidth),
-                'total_ops': sum(t['ops_count'] for t in trace),
-                'total_bytes': sum(t['bytes_transferred'] for t in trace)
-            }
+            "trace": trace,
+            "summary": {
+                "total_iterations": total_iterations,
+                "total_time_seconds": total_time,
+                "time_to_1e3_error": time_to_1e3,
+                "time_to_1e6_error": time_to_1e6,
+                "time_to_1e9_error": time_to_1e9,
+                "avg_flops": float(avg_flops),
+                "peak_flops": float(peak_flops),
+                "avg_bandwidth_gbps": float(avg_bandwidth),
+                "peak_bandwidth_gbps": float(peak_bandwidth),
+                "total_ops": sum(t["ops_count"] for t in trace),
+                "total_bytes": sum(t["bytes_transferred"] for t in trace),
+            },
         }
 
         return trace_document
 
-    def _time_to_error(self, trace: List[Dict], error_threshold: float) -> Optional[float]:
+    def _time_to_error(
+        self, trace: List[Dict], error_threshold: float
+    ) -> Optional[float]:
         """
         Find time to reach a specific error threshold.
 
@@ -239,8 +256,8 @@ class PowerMethodTracer:
             Time in seconds, or None if threshold not reached
         """
         for t in trace:
-            if t['relative_error'] <= error_threshold:
-                return t['cumulative_time']
+            if t["relative_error"] <= error_threshold:
+                return t["cumulative_time"]
         return None
 
     def save_trace(self, trace: Dict, output_path: str):
@@ -253,7 +270,7 @@ class PowerMethodTracer:
         """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(trace, f, indent=2)
 
         print(f"✓ Trace saved: {output_path}")
@@ -276,14 +293,11 @@ def main():
 
     print("\nRunning FP32 trace...")
     trace = tracer.run(
-        precision_name='FP32',
-        dtype=np.float32,
-        simulate_fp8_flag=False,
-        max_iter=500
+        precision_name="FP32", dtype=np.float32, simulate_fp8_flag=False, max_iter=500
     )
 
     # Save test trace
-    output_path = 'algorithms/power_method/traces/test_fp32_cond100.json'
+    output_path = "algorithms/power_method/traces/test_fp32_cond100.json"
     tracer.save_trace(trace, output_path)
 
     print("\n" + "=" * 70)
@@ -291,5 +305,5 @@ def main():
     print("=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

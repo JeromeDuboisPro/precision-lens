@@ -6,9 +6,9 @@ Tests cover:
 - power_method() convergence and numerical stability
 - create_test_matrix() matrix properties and validation
 """
-import pytest
+
 import numpy as np
-from study import simulate_fp8, power_method, create_test_matrix
+from study import create_test_matrix, power_method, simulate_fp8
 
 
 class TestSimulateFP8:
@@ -148,20 +148,26 @@ class TestPowerMethod:
     def test_eigenvalue_accuracy_fp64(self, well_conditioned_matrix):
         """Test eigenvalue accuracy with FP64 precision."""
         true_eigenvalue = np.max(np.linalg.eigvalsh(well_conditioned_matrix))
-        eigenvalue, _ = power_method(well_conditioned_matrix, max_iter=500, dtype=np.float64)
+        eigenvalue, _ = power_method(
+            well_conditioned_matrix, max_iter=500, dtype=np.float64
+        )
         relative_error = abs(eigenvalue - true_eigenvalue) / abs(true_eigenvalue)
         assert relative_error < 1e-8  # FP64 should be very accurate
 
     def test_eigenvalue_accuracy_fp32(self, well_conditioned_matrix):
         """Test eigenvalue accuracy with FP32 precision."""
         true_eigenvalue = np.max(np.linalg.eigvalsh(well_conditioned_matrix))
-        eigenvalue, _ = power_method(well_conditioned_matrix, max_iter=500, dtype=np.float32)
+        eigenvalue, _ = power_method(
+            well_conditioned_matrix, max_iter=500, dtype=np.float32
+        )
         relative_error = abs(eigenvalue - true_eigenvalue) / abs(true_eigenvalue)
         assert relative_error < 1e-5  # FP32 less accurate than FP64
 
     def test_fp16_precision(self, well_conditioned_matrix):
         """Test that FP16 precision runs without errors."""
-        eigenvalue, history = power_method(well_conditioned_matrix, max_iter=500, dtype=np.float16)
+        eigenvalue, history = power_method(
+            well_conditioned_matrix, max_iter=500, dtype=np.float16
+        )
         assert len(history) > 0
         assert not np.isnan(eigenvalue)
         assert not np.isinf(eigenvalue)
@@ -172,7 +178,7 @@ class TestPowerMethod:
             well_conditioned_matrix,
             max_iter=500,
             dtype=np.float32,
-            simulate_fp8_flag=True
+            simulate_fp8_flag=True,
         )
         assert len(history) > 0
         assert not np.isnan(eigenvalue)
@@ -227,7 +233,9 @@ class TestPowerMethod:
     def test_ill_conditioned_matrix(self, ill_conditioned_matrix):
         """Test behavior on ill-conditioned matrix."""
         true_eigenvalue = np.max(np.linalg.eigvalsh(ill_conditioned_matrix))
-        eigenvalue, history = power_method(ill_conditioned_matrix, max_iter=1000, dtype=np.float64)
+        eigenvalue, history = power_method(
+            ill_conditioned_matrix, max_iter=1000, dtype=np.float64
+        )
         # Should still converge, but may take more iterations
         relative_error = abs(eigenvalue - true_eigenvalue) / abs(true_eigenvalue)
         assert relative_error < 0.01  # May not be as accurate for ill-conditioned
