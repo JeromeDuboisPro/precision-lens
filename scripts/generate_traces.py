@@ -14,6 +14,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from algorithms.power_method.instrumented import PowerMethodTracer
+from web.config import load_config, get_trace_filename
 
 
 def generate_all_traces(
@@ -78,8 +79,8 @@ def generate_all_traces(
                     max_iter=max_iter
                 )
 
-                # Generate filename
-                filename = f"{precision_name}_cond{int(cond_num)}_n{matrix_size}.json"
+                # Generate filename using utility function
+                filename = get_trace_filename(precision_name, int(cond_num), matrix_size)
                 output_path = os.path.join(output_dir, filename)
 
                 # Save trace
@@ -104,18 +105,40 @@ def generate_all_traces(
 def main():
     """
     Main entry point.
+    Generates traces for both algorithms directory and web directory using web/config.json.
     """
-    # Generate standard trace library
+    # Load configuration from web/config.json
+    config = load_config()
+    matrix_size = config['matrixSize']
+    condition_numbers = config['conditionNumbers']
+
+    print(f"✓ Loaded configuration from web/config.json")
+    print(f"  Matrix size for web: {matrix_size}")
+    print(f"  Condition numbers: {condition_numbers}")
+
+    # Generate traces for algorithms directory (legacy, larger size)
+    print("\n📁 Generating traces for algorithms/power_method/traces/")
     generate_all_traces(
         matrix_size=1000,
-        condition_numbers=[10, 100, 1000],
+        condition_numbers=condition_numbers,
         output_dir='algorithms/power_method/traces',
+        max_iter=500
+    )
+
+    # Generate traces for web directory (using config.json settings)
+    print("\n\n📁 Generating traces for web/traces/ (using config.json settings)")
+    generate_all_traces(
+        matrix_size=matrix_size,
+        condition_numbers=condition_numbers,
+        output_dir=f"web/{config['tracesDirectory']}",
         max_iter=500
     )
 
     print("\n" + "=" * 70)
     print("Ready for visualization!")
     print("=" * 70)
+    print(f"\n✓ Web traces generated with matrix size n={matrix_size}")
+    print(f"✓ Configuration controlled by web/config.json")
 
 
 if __name__ == '__main__':

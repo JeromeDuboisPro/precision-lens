@@ -18,6 +18,7 @@ class PrecisionDashboard {
             fp16: '#fbbf24',  // yellow-400
             fp8: '#fb923c'    // orange-400
         };
+        this.config = null;  // Will be loaded from config.json
 
         this.init();
     }
@@ -79,6 +80,26 @@ class PrecisionDashboard {
     }
 
     async init() {
+        // Load configuration first
+        try {
+            const response = await fetch('config.json');
+            if (!response.ok) {
+                throw new Error(`Failed to load config.json: ${response.status}`);
+            }
+            this.config = await response.json();
+            console.log('Configuration loaded:', this.config);
+        } catch (error) {
+            console.error('Error loading config:', error);
+            alert('Failed to load configuration. Using default settings.');
+            // Fallback to defaults
+            this.config = {
+                matrixSize: 50,
+                conditionNumbers: [10, 100, 1000],
+                precisions: ['fp64', 'fp32', 'fp16', 'fp8'],
+                tracesDirectory: 'traces'
+            };
+        }
+
         // Set up event listeners
         this.setupEventListeners();
 
@@ -132,8 +153,8 @@ class PrecisionDashboard {
         try {
             // Load all four precision traces for this condition number
             const loadPromises = this.precisions.map(async (precision) => {
-                const filename = `${precision}_cond${conditionNumber}_n1000.json`;
-                const response = await fetch(`traces/${filename}`);
+                const filename = `${precision}_cond${conditionNumber}_n${this.config.matrixSize}.json`;
+                const response = await fetch(`${this.config.tracesDirectory}/${filename}`);
 
                 if (!response.ok) {
                     throw new Error(`Failed to load ${filename}: ${response.status} ${response.statusText}`);
