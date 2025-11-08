@@ -184,6 +184,7 @@ class PrecisionDashboard {
             yaxis: {
                 title: 'Relative Error',
                 type: 'log',
+                exponentformat: 'power',
                 gridcolor: '#374151',
                 zerolinecolor: '#4b5563'
             },
