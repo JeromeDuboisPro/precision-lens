@@ -482,7 +482,7 @@ class PrecisionDashboard {
         if (frameIndex >= trace.trace.length - 1) {
             // Check if threshold was reached
             if (trace.metadata.threshold_reached) {
-                statusEl.textContent = 'Threshold Reached';
+                statusEl.textContent = 'IEEE754 Threshold';
                 statusEl.className = 'px-3 py-1 rounded-full text-xs font-medium bg-purple-900 text-purple-200';
             } else if (trace.metadata.converged) {
                 statusEl.textContent = 'Converged';
@@ -538,14 +538,16 @@ class PrecisionDashboard {
             { label: 'Iterations', key: 'total_iterations', format: (v) => v.toLocaleString() },
             { label: 'Time (ms)', key: 'total_time_seconds', format: (v) => (v * 1000).toFixed(2) },
             { label: 'Time/Iter (ms)', key: 'time_per_iter', format: (v) => v.toFixed(3) },
+            { label: 'Total Time (s)', key: 'total_time_seconds', format: (v) => v.toExponential(2) },
             { label: 'Final Error', key: 'final_error', format: (v) => this.formatError(v) },
             { label: 'Eigenvalue vs FP64', key: 'error_vs_fp64', format: (v) => v },
             { label: 'Avg FLOPS (M)', key: 'avg_flops', format: (v) => (v / 1e6).toFixed(1) },
-            { label: 'Total FLOPS (G)', key: 'total_ops', format: (v) => (v / 1e9).toFixed(2) },
+            { label: 'Total FLOPS', key: 'total_ops', format: (v) => v.toExponential(2) },
             { label: 'Avg BW (GB/s)', key: 'avg_bandwidth_gbps', format: (v) => v.toFixed(2) },
-            { label: 'Total BW (GB)', key: 'total_bytes', format: (v) => (v / 1e9).toFixed(2) },
+            { label: 'Total BW', key: 'total_bytes', format: (v) => v.toExponential(2) },
+            { label: 'IEEE754 ε', key: 'ieee754_threshold', format: (v) => this.formatError(v) },
             { label: 'Converged', key: 'converged', format: (v) => v ? '✓' : '✗' },
-            { label: 'Threshold Hit', key: 'threshold_reached', format: (v) => v ? '✓' : '✗' }
+            { label: 'IEEE754 Threshold', key: 'threshold_reached', format: (v) => v ? '✓' : '✗' }
         ];
 
         metrics.forEach(metric => {
@@ -559,7 +561,7 @@ class PrecisionDashboard {
                 let value = '—';
 
                 if (trace && trace.metadata && trace.summary) {
-                    if (metric.key === 'final_error' || metric.key === 'converged' || metric.key === 'threshold_reached') {
+                    if (metric.key === 'final_error' || metric.key === 'converged' || metric.key === 'threshold_reached' || metric.key === 'ieee754_threshold') {
                         value = metric.format(trace.metadata[metric.key]);
                     } else if (metric.key === 'time_per_iter') {
                         // Calculate average wall time per iteration in milliseconds
