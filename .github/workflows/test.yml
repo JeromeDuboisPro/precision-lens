@@ -2,9 +2,9 @@ name: Run Tests
 
 on:
   push:
-    branches: ['**']  # Run on all branches including feature branches
+    branches: [main]  # Run only on push to main branch
   pull_request:
-    branches: [main]
+    branches: [main]  # Run on PRs targeting main
 
 jobs:
   backend-tests:
