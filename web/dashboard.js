@@ -212,6 +212,57 @@ class PrecisionDashboard {
 
             Plotly.newPlot(plotDiv, data, layout, config);
         });
+
+        // Initialize comparison plot (FP32, FP16, FP8 error ratios vs FP64)
+        const comparisonLayout = {
+            ...layout,
+            yaxis: {
+                title: 'Error Ratio (vs FP64)',
+                type: 'log',
+                exponentformat: 'power',
+                gridcolor: '#374151',
+                zerolinecolor: '#4b5563'
+            },
+            showlegend: true,
+            legend: {
+                x: 1,
+                xanchor: 'right',
+                y: 1,
+                yanchor: 'top',
+                bgcolor: 'rgba(31, 41, 55, 0.8)',
+                bordercolor: '#374151',
+                borderwidth: 1
+            }
+        };
+
+        const comparisonData = [
+            {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'FP32',
+                line: { color: this.colors.fp32, width: 2 }
+            },
+            {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'FP16',
+                line: { color: this.colors.fp16, width: 2 }
+            },
+            {
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                name: 'FP8',
+                line: { color: this.colors.fp8, width: 2 }
+            }
+        ];
+
+        Plotly.newPlot('plot-comparison', comparisonData, comparisonLayout, config);
     }
 
     initGauges() {
@@ -332,6 +383,9 @@ class PrecisionDashboard {
             this.updateStatus(precision, trace, maxFrame);
         });
 
+        // Update comparison plot
+        this.updateComparisonPlot(frameIndex);
+
         // Update gauges (using FP32 as reference, or first available)
         const refPrecision = this.traces['fp32'] ? 'fp32' : this.precisions[0];
         const refTrace = this.traces[refPrecision];
@@ -365,6 +419,48 @@ class PrecisionDashboard {
         };
 
         Plotly.restyle(plotDiv, update, [0]);
+    }
+
+    updateComparisonPlot(frameIndex) {
+        const fp64Trace = this.traces['fp64'];
+        if (!fp64Trace || !fp64Trace.trace) return;
+
+        const comparePrecisions = ['fp32', 'fp16', 'fp8'];
+        const updates = { x: [], y: [] };
+
+        comparePrecisions.forEach((precision, index) => {
+            const trace = this.traces[precision];
+            if (!trace || !trace.trace) {
+                updates.x.push([]);
+                updates.y.push([]);
+                return;
+            }
+
+            const maxFrame = Math.min(frameIndex, trace.trace.length - 1);
+            const data = [];
+
+            // Calculate error ratios for each iteration up to maxFrame
+            for (let i = 0; i <= maxFrame; i++) {
+                const fp64Error = fp64Trace.trace[i]?.relative_error;
+                const precisionError = trace.trace[i]?.relative_error;
+
+                if (fp64Error && precisionError &&
+                    !isNaN(fp64Error) && !isNaN(precisionError) &&
+                    isFinite(fp64Error) && isFinite(precisionError) &&
+                    fp64Error > 0 && precisionError > 0) {
+                    const ratio = precisionError / fp64Error;
+                    data.push({
+                        iteration: trace.trace[i].iteration,
+                        ratio: Math.max(ratio, 1e-3)  // Clamp minimum for log scale
+                    });
+                }
+            }
+
+            updates.x.push(data.map(d => d.iteration));
+            updates.y.push(data.map(d => d.ratio));
+        });
+
+        Plotly.restyle('plot-comparison', updates, [0, 1, 2]);
     }
 
     updateMetrics(precision, iterData) {
@@ -438,6 +534,7 @@ class PrecisionDashboard {
             { label: 'Time (ms)', key: 'total_time_seconds', format: (v) => (v * 1000).toFixed(2) },
             { label: 'Time/Iter (ms)', key: 'time_per_iter', format: (v) => v.toFixed(3) },
             { label: 'Final Error', key: 'final_error', format: (v) => this.formatError(v) },
+            { label: 'Error vs FP64', key: 'error_vs_fp64', format: (v) => `${v.toFixed(1)}×` },
             { label: 'Avg FLOPS (M)', key: 'avg_flops', format: (v) => (v / 1e6).toFixed(1) },
             { label: 'Converged', key: 'converged', format: (v) => v ? '✓' : '✗' }
         ];
@@ -462,6 +559,15 @@ class PrecisionDashboard {
                         if (trace.summary.total_iterations > 0) {
                             const timePerIter = (trace.summary.total_time_seconds / trace.summary.total_iterations) * 1000;
                             value = metric.format(timePerIter);
+                        }
+                    } else if (metric.key === 'error_vs_fp64') {
+                        // Calculate error ratio compared to FP64
+                        const fp64Trace = this.traces['fp64'];
+                        if (precision === 'fp64') {
+                            value = '1.0×';  // FP64 baseline
+                        } else if (fp64Trace && fp64Trace.metadata && fp64Trace.metadata.final_error > 0) {
+                            const errorRatio = trace.metadata.final_error / fp64Trace.metadata.final_error;
+                            value = metric.format(errorRatio);
                         }
                     } else {
                         value = metric.format(trace.summary[metric.key]);
@@ -502,6 +608,13 @@ class PrecisionDashboard {
         const fp32Error = fp32.metadata.final_error;
         const fp16Error = fp16.metadata.final_error;
         const fp8Error = fp8.metadata.final_error;
+
+        // Error comparison vs FP64
+        const fp32ErrorRatio = fp32Error / fp64Error;
+        const fp16ErrorRatio = fp16Error / fp64Error;
+        const fp8ErrorRatio = fp8Error / fp64Error;
+
+        insights.push(`<strong>📊 Error vs FP64:</strong> FP32 error is ${fp32ErrorRatio.toFixed(1)}× higher, FP16 is ${fp16ErrorRatio.toFixed(1)}× higher, FP8 is ${fp8ErrorRatio.toFixed(0)}× higher than FP64 baseline.`);
 
         if (fp32Error < 1e-5) {
             insights.push(`<strong>✓ FP32 Performance:</strong> Achieves excellent accuracy (${this.formatError(fp32Error)}) with significant speedup — ideal for most applications.`);
