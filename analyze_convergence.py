@@ -25,10 +25,9 @@ def analyze_trace_file(file_path: Path) -> Dict:
     }
 
 
-def main():
-    # Find all trace files
+def load_trace_results():
+    """Load and collect all trace file results."""
     trace_dirs = [Path("algorithms/power_method/traces"), Path("web/traces")]
-
     results_by_precision = {"FP8": [], "FP16": [], "FP32": [], "FP64": []}
 
     for trace_dir in trace_dirs:
@@ -37,7 +36,7 @@ def main():
 
         for trace_file in sorted(trace_dir.glob("*.json")):
             if trace_file.name == "test_fp32_cond100.json":
-                continue  # Skip test file
+                continue
 
             try:
                 result = analyze_trace_file(trace_file)
@@ -46,7 +45,11 @@ def main():
             except Exception as e:
                 print(f"Error processing {trace_file}: {e}")
 
-    # Print summary by precision
+    return results_by_precision
+
+
+def print_detailed_analysis(results_by_precision):
+    """Print detailed convergence analysis by precision."""
     print("=" * 80)
     print("FP CONVERGENCE ANALYSIS")
     print("=" * 80)
@@ -78,7 +81,9 @@ def main():
                     f"  cond={cond:>4}, n={n:>4}: ✗ Did NOT converge after {total_iter} iterations (final error: {final_err:.2e})"
                 )
 
-    # Summary table
+
+def print_summary_table(results_by_precision):
+    """Print summary table of convergence results."""
     print("\n" + "=" * 80)
     print("CONVERGENCE SUMMARY TABLE")
     print("=" * 80)
@@ -102,6 +107,13 @@ def main():
             )
 
             print(f"{precision:<10} {cond:<10.0f} {n:<12} {converged:<12} {conv_iter}")
+
+
+def main():
+    """Main entry point."""
+    results_by_precision = load_trace_results()
+    print_detailed_analysis(results_by_precision)
+    print_summary_table(results_by_precision)
 
 
 if __name__ == "__main__":
