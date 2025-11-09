@@ -188,7 +188,9 @@ class PrecisionDashboard {
         const validation = this.validateTraceData(data);
         if (!validation.valid) {
           throw new Error(
-            `Invalid trace data in ${filename}:\n${validation.errors.join('\n')}`
+            `Invalid trace data in ${filename}:\n${validation.errors.join(
+              '\n'
+            )}`
           );
         }
 
@@ -784,7 +786,11 @@ class PrecisionDashboard {
     const fp8Speedup = fp64Time / fp8.summary.total_time_seconds;
 
     insights.push(
-      `<strong>⚡ Speedup:</strong> FP32 is ${fp32Speedup.toFixed(1)}× faster, FP16 is ${fp16Speedup.toFixed(1)}× faster, FP8 is ${fp8Speedup.toFixed(1)}× faster than FP64.`
+      `<strong>⚡ Speedup:</strong> FP32 is ${fp32Speedup.toFixed(
+        1
+      )}× faster, FP16 is ${fp16Speedup.toFixed(
+        1
+      )}× faster, FP8 is ${fp8Speedup.toFixed(1)}× faster than FP64.`
     );
 
     // Accuracy analysis
@@ -812,28 +818,44 @@ class PrecisionDashboard {
         : 0;
 
     insights.push(
-      `<strong>📊 Eigenvalue vs FP64:</strong> FP32 differs by ${this.formatError(fp32EigenvalueError)}, FP16 by ${this.formatError(fp16EigenvalueError)}, FP8 by ${this.formatError(fp8EigenvalueError)} from FP64 baseline.`
+      `<strong>📊 Eigenvalue vs FP64:</strong> FP32 differs by ${this.formatError(
+        fp32EigenvalueError
+      )}, FP16 by ${this.formatError(
+        fp16EigenvalueError
+      )}, FP8 by ${this.formatError(fp8EigenvalueError)} from FP64 baseline.`
     );
 
     if (fp32Error < 1e-5) {
       insights.push(
-        `<strong>✓ FP32 Performance:</strong> Achieves excellent accuracy (${this.formatError(fp32Error)}) with significant speedup — ideal for most applications.`
+        `<strong>✓ FP32 Performance:</strong> Achieves excellent accuracy (${this.formatError(
+          fp32Error
+        )}) with significant speedup — ideal for most applications.`
       );
     }
 
     if (fp16Error < 1e-2) {
       insights.push(
-        `<strong>⚠️ FP16 Tradeoff:</strong> Final error of ${this.formatError(fp16Error)} represents a ${fp16Speedup.toFixed(1)}× speedup. Acceptable for many ML inference tasks.`
+        `<strong>⚠️ FP16 Tradeoff:</strong> Final error of ${this.formatError(
+          fp16Error
+        )} represents a ${fp16Speedup.toFixed(
+          1
+        )}× speedup. Acceptable for many ML inference tasks.`
       );
     } else {
       insights.push(
-        `<strong>❌ FP16 Limitation:</strong> Error of ${this.formatError(fp16Error)} may be too high for precision-critical applications.`
+        `<strong>❌ FP16 Limitation:</strong> Error of ${this.formatError(
+          fp16Error
+        )} may be too high for precision-critical applications.`
       );
     }
 
     if (fp8Error > 0.1) {
       insights.push(
-        `<strong>🔴 FP8 Challenge:</strong> Error of ${this.formatError(fp8Error)} (${(fp8Error * 100).toFixed(1)}%) shows severe degradation. FP8 best suited for inference with error-tolerant models.`
+        `<strong>🔴 FP8 Challenge:</strong> Error of ${this.formatError(
+          fp8Error
+        )} (${(fp8Error * 100).toFixed(
+          1
+        )}%) shows severe degradation. FP8 best suited for inference with error-tolerant models.`
       );
     }
 
