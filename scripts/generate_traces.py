@@ -8,6 +8,7 @@ combinations to be used by the web dashboard.
 
 import os
 import sys
+from typing import Optional
 
 import numpy as np
 
@@ -20,7 +21,7 @@ from web.config import get_trace_filename, load_config  # noqa: E402
 
 def generate_all_traces(
     matrix_size: int = 50,
-    condition_numbers: list = None,
+    condition_numbers: Optional[list] = None,
     output_dir: str = "algorithms/power_method/traces",
     max_iter: int = 500,
 ):

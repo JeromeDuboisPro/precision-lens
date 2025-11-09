@@ -82,7 +82,7 @@ class PowerMethodTracer:
         x = x / np.linalg.norm(x)
 
         # Trace storage
-        trace = []
+        trace: List[Dict] = []
         converged = False
         convergence_iteration = None
 
@@ -257,7 +257,7 @@ class PowerMethodTracer:
         """
         for t in trace:
             if t["relative_error"] <= error_threshold:
-                return t["cumulative_time"]
+                return float(t["cumulative_time"])
         return None
 
     def save_trace(self, trace: Dict, output_path: str):
