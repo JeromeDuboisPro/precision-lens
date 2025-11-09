@@ -53,7 +53,8 @@ def simulate_fp8(x: np.ndarray) -> np.ndarray:
     quantized = np.zeros_like(abs_x)
     quantized[mask] = np.round(abs_x[mask] * 8) / 8
 
-    return sign * quantized
+    result: np.ndarray = sign * quantized
+    return result
 
 
 def power_method(
@@ -141,9 +142,9 @@ def create_test_matrix(n: int, condition_number: float) -> np.ndarray:
     Q, _ = np.linalg.qr(np.random.randn(n, n))
 
     # Construct matrix: A = Q @ diag(eigenvalues) @ Q.T
-    A = Q @ np.diag(eigenvalues) @ Q.T
+    A_result: np.ndarray = Q @ np.diag(eigenvalues) @ Q.T
 
-    return A
+    return A_result
 
 
 def run_convergence_study():
