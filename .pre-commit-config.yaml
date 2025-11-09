@@ -33,8 +33,9 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-all]
+        additional_dependencies: [types-all, numpy]
         args: [--ignore-missing-imports]
+        files: \.py$
 
   # JavaScript hooks
   - repo: https://github.com/pre-commit/mirrors-eslint
@@ -51,6 +52,6 @@ repos:
     rev: v3.1.0
     hooks:
       - id: prettier
-        files: \.(js|jsx|ts|tsx|json|css|md|html)$
-        exclude: ^web/traces/|\.json$
+        files: ^web/.*\.(js|jsx|ts|tsx|css|md|html)$
+        exclude: ^web/traces/
         args: ['--config', 'web/.prettierrc']

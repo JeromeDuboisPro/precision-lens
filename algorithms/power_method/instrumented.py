@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -44,7 +44,7 @@ class PowerMethodTracer:
     def run(  # noqa: C901
         self,
         precision_name: str,
-        dtype: np.dtype,
+        dtype: Any,  # np.dtype or type like np.float32
         simulate_fp8_flag: bool = False,
         max_iter: int = 1000,
         tol: float = 1e-10,
@@ -66,16 +66,15 @@ class PowerMethodTracer:
         A = self.matrix.astype(dtype)
 
         # Determine bytes per element
-        dtype_bytes = {
+        dtype_sizes = {
             np.float64: 8,
             np.float32: 4,
             np.float16: 2,
-        }.get(
-            dtype, 4
-        )  # Default to 4 for FP8 simulation
-
+        }
         if simulate_fp8_flag:
             dtype_bytes = 1  # Simulated FP8
+        else:
+            dtype_bytes = dtype_sizes.get(dtype, 4)
 
         # Initialize random vector
         x = np.random.randn(n).astype(dtype)
