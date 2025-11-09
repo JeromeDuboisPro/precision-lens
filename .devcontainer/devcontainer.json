@@ -1,0 +1,76 @@
+{
+  "name": "PrecisionLens Dev Environment",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.mypy-type-checker",
+        "ms-python.flake8",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+
+        // Format on save
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+
+        // Python formatters and linters
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter",
+          "editor.formatOnSave": true
+        },
+        "black-formatter.args": ["--line-length=88"],
+        "isort.args": ["--profile", "black"],
+        "flake8.args": [
+          "--max-line-length=88",
+          "--extend-ignore=E203,E266,E501,W503"
+        ],
+        "mypy-type-checker.args": ["--ignore-missing-imports"],
+
+        // JavaScript/TypeScript formatters and linters
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "eslint.workingDirectories": ["./web"],
+        "prettier.configPath": "web/.prettierrc",
+
+        // Editor settings
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+        "files.exclude": {
+          "**/__pycache__": true,
+          "**/*.pyc": true,
+          "**/.pytest_cache": true,
+          "**/.mypy_cache": true,
+          "**/node_modules": true,
+          "**/.coverage": true
+        }
+      }
+    }
+  },
+
+  "remoteUser": "vscode"
+}
