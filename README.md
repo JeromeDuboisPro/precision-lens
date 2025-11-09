@@ -18,7 +18,24 @@ Watch the power method algorithm converge across FP64, FP32, FP16, and FP8 in re
 
 ## 🚀 Quick Start
 
-### View Interactive Dashboard
+### Option 1: Dev Container (Recommended for Development)
+
+Get a fully configured environment with Python 3.12, Node.js 20, and all linting tools:
+
+```bash
+# Open in Claude Code, VSCode, or GitHub Codespaces
+# Click "Reopen in Container" when prompted
+```
+
+✅ Matches CI/CD environment exactly
+✅ Pre-commit hooks auto-installed
+✅ All dependencies ready to go
+
+See [.devcontainer/README.md](.devcontainer/README.md) for details.
+
+### Option 2: Manual Setup
+
+#### View Interactive Dashboard
 
 ```bash
 cd web
@@ -26,14 +43,14 @@ python3 -m http.server 8000
 # Open http://localhost:8000
 ```
 
-### Run Static Analysis
+#### Run Static Analysis
 
 ```bash
 pip install -r requirements.txt
 python algorithms/power_method/study.py
 ```
 
-### Generate New Traces
+#### Generate New Traces
 
 ```bash
 python scripts/generate_traces.py

@@ -1,24 +1,26 @@
 """
 Shared pytest fixtures for precision-lens tests.
 """
-import pytest
-import numpy as np
-import sys
+
 import os
+import sys
+
+import numpy as np
+import pytest
 
 # Add algorithms directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'algorithms', 'power_method'))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "..", "algorithms", "power_method")
+)
 
 
 @pytest.fixture
 def simple_matrix():
     """Simple 3x3 matrix with known eigenvalues."""
     # Diagonal matrix - eigenvalues are on diagonal
-    return np.array([
-        [3.0, 0.0, 0.0],
-        [0.0, 2.0, 0.0],
-        [0.0, 0.0, 1.0]
-    ], dtype=np.float64)
+    return np.array(
+        [[3.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 1.0]], dtype=np.float64
+    )
 
 
 @pytest.fixture
@@ -46,12 +48,42 @@ def ill_conditioned_matrix():
 def sample_trace_data():
     """Sample trace data for testing time_to_error functionality."""
     return [
-        {'iteration': 0, 'relative_error': 1.0, 'cumulative_time': 0.001, 'eigenvalue': 5.0},
-        {'iteration': 1, 'relative_error': 0.5, 'cumulative_time': 0.002, 'eigenvalue': 7.5},
-        {'iteration': 2, 'relative_error': 0.01, 'cumulative_time': 0.003, 'eigenvalue': 9.9},
-        {'iteration': 3, 'relative_error': 0.001, 'cumulative_time': 0.004, 'eigenvalue': 9.99},
-        {'iteration': 4, 'relative_error': 1e-6, 'cumulative_time': 0.005, 'eigenvalue': 9.999999},
-        {'iteration': 5, 'relative_error': 1e-9, 'cumulative_time': 0.006, 'eigenvalue': 9.9999999999},
+        {
+            "iteration": 0,
+            "relative_error": 1.0,
+            "cumulative_time": 0.001,
+            "eigenvalue": 5.0,
+        },
+        {
+            "iteration": 1,
+            "relative_error": 0.5,
+            "cumulative_time": 0.002,
+            "eigenvalue": 7.5,
+        },
+        {
+            "iteration": 2,
+            "relative_error": 0.01,
+            "cumulative_time": 0.003,
+            "eigenvalue": 9.9,
+        },
+        {
+            "iteration": 3,
+            "relative_error": 0.001,
+            "cumulative_time": 0.004,
+            "eigenvalue": 9.99,
+        },
+        {
+            "iteration": 4,
+            "relative_error": 1e-6,
+            "cumulative_time": 0.005,
+            "eigenvalue": 9.999999,
+        },
+        {
+            "iteration": 5,
+            "relative_error": 1e-9,
+            "cumulative_time": 0.006,
+            "eigenvalue": 9.9999999999,
+        },
     ]
 
 

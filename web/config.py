@@ -6,9 +6,8 @@ configuration between web frontend and Python scripts/tests.
 """
 
 import json
-import os
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, Optional
 
 
 def get_project_root() -> Path:
@@ -22,7 +21,7 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent
 
 
-def load_config(config_path: str = None) -> Dict[str, Any]:
+def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """
     Load web configuration from config.json.
 
@@ -36,25 +35,28 @@ def load_config(config_path: str = None) -> Dict[str, Any]:
         - precisions: List[str]
         - tracesDirectory: str
     """
+    config_file: Path
     if config_path is None:
-        config_path = get_project_root() / 'web' / 'config.json'
+        config_file = get_project_root() / "web" / "config.json"
     else:
-        config_path = Path(config_path)
+        config_file = Path(config_path)
 
     try:
-        with open(config_path, 'r') as f:
-            config = json.load(f)
+        with open(config_file, "r") as f:
+            config: Dict[str, Any] = json.load(f)
         return config
     except FileNotFoundError:
         raise FileNotFoundError(
-            f"Configuration file not found: {config_path}\n"
+            f"Configuration file not found: {config_file}\n"
             "Please ensure web/config.json exists in the project root."
         )
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON in configuration file: {e}")
 
 
-def get_trace_filename(precision: str, condition_number: int, matrix_size: int = None) -> str:
+def get_trace_filename(
+    precision: str, condition_number: int, matrix_size: Optional[int] = None
+) -> str:
     """
     Generate trace filename following the project naming convention.
 
@@ -68,7 +70,7 @@ def get_trace_filename(precision: str, condition_number: int, matrix_size: int =
     """
     if matrix_size is None:
         config = load_config()
-        matrix_size = config['matrixSize']
+        matrix_size = config["matrixSize"]
 
     return f"{precision}_cond{condition_number}_n{matrix_size}.json"
 
@@ -81,10 +83,11 @@ def get_web_traces_dir() -> Path:
         Path to web traces directory
     """
     config = load_config()
-    return get_project_root() / 'web' / config['tracesDirectory']
+    traces_dir: str = config["tracesDirectory"]
+    return get_project_root() / "web" / traces_dir
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Quick test/demo
     config = load_config()
     print("Web Configuration:")

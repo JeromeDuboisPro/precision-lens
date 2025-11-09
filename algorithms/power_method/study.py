@@ -12,15 +12,17 @@ Precisions tested:
 - FP8: Simulated via mantissa quantization
 """
 
-import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend for headless environments
-import matplotlib.pyplot as plt
-from matplotlib.ticker import LogFormatterMathtext
-from typing import Tuple, List
-import warnings
+import numpy as np
 
-warnings.filterwarnings('ignore')
+matplotlib.use("Agg")  # Use non-interactive backend for headless environments
+import warnings  # noqa: E402
+from typing import List, Tuple  # noqa: E402
+
+import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.ticker import LogFormatterMathtext  # noqa: E402
+
+warnings.filterwarnings("ignore")
 
 
 def simulate_fp8(x: np.ndarray) -> np.ndarray:
@@ -51,11 +53,17 @@ def simulate_fp8(x: np.ndarray) -> np.ndarray:
     quantized = np.zeros_like(abs_x)
     quantized[mask] = np.round(abs_x[mask] * 8) / 8
 
-    return sign * quantized
+    result: np.ndarray = sign * quantized
+    return result
 
 
-def power_method(A: np.ndarray, max_iter: int = 1000, tol: float = 1e-10,
-                 dtype=np.float64, simulate_fp8_flag: bool = False) -> Tuple[float, List[float]]:
+def power_method(
+    A: np.ndarray,
+    max_iter: int = 1000,
+    tol: float = 1e-10,
+    dtype=np.float64,
+    simulate_fp8_flag: bool = False,
+) -> Tuple[float, List[float]]:
     """
     Power method for computing the dominant eigenvalue.
 
@@ -134,9 +142,9 @@ def create_test_matrix(n: int, condition_number: float) -> np.ndarray:
     Q, _ = np.linalg.qr(np.random.randn(n, n))
 
     # Construct matrix: A = Q @ diag(eigenvalues) @ Q.T
-    A = Q @ np.diag(eigenvalues) @ Q.T
+    A_result: np.ndarray = Q @ np.diag(eigenvalues) @ Q.T
 
-    return A
+    return A_result
 
 
 def run_convergence_study():
@@ -150,15 +158,17 @@ def run_convergence_study():
 
     # Precision configurations
     precisions = [
-        ('FP64', np.float64, False),
-        ('FP32', np.float32, False),
-        ('FP16', np.float16, False),
-        ('FP8 (simulated)', np.float32, True),
+        ("FP64", np.float64, False),
+        ("FP32", np.float32, False),
+        ("FP16", np.float16, False),
+        ("FP8 (simulated)", np.float32, True),
     ]
 
     # Create figure with subplots
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
-    fig.suptitle('Power Method Convergence: Precision Impact', fontsize=14, fontweight='bold')
+    fig.suptitle(
+        "Power Method Convergence: Precision Impact", fontsize=14, fontweight="bold"
+    )
 
     for idx, cond_num in enumerate(condition_numbers):
         ax = axes[idx]
@@ -178,36 +188,40 @@ def run_convergence_study():
                     A,
                     max_iter=max_iterations,
                     dtype=dtype,
-                    simulate_fp8_flag=simulate_fp8_flag
+                    simulate_fp8_flag=simulate_fp8_flag,
                 )
 
                 # Compute relative error
-                errors = [abs(ev - true_eigenvalue) / abs(true_eigenvalue) for ev in history]
+                errors = [
+                    abs(ev - true_eigenvalue) / abs(true_eigenvalue) for ev in history
+                ]
 
                 # Plot convergence
                 ax.semilogy(errors, label=precision_name, linewidth=2, alpha=0.8)
 
-                print(f"  {precision_name:20s}: {final_eigenvalue:12.6f} "
-                      f"(error: {abs(final_eigenvalue - true_eigenvalue)/abs(true_eigenvalue):.2e}, "
-                      f"iters: {len(history)})")
+                print(
+                    f"  {precision_name:20s}: {final_eigenvalue:12.6f} "
+                    f"(error: {abs(final_eigenvalue - true_eigenvalue)/abs(true_eigenvalue):.2e}, "
+                    f"iters: {len(history)})"
+                )
 
             except Exception as e:
                 print(f"  {precision_name:20s}: Failed - {str(e)}")
 
         # Configure subplot
-        ax.set_xlabel('Iteration', fontsize=10)
-        ax.set_ylabel('Relative Error', fontsize=10)
-        ax.set_title(f'Condition Number = {cond_num}', fontsize=11, fontweight='bold')
-        ax.grid(True, alpha=0.3, linestyle='--')
-        ax.legend(fontsize=8, loc='best')
+        ax.set_xlabel("Iteration", fontsize=10)
+        ax.set_ylabel("Relative Error", fontsize=10)
+        ax.set_title(f"Condition Number = {cond_num}", fontsize=11, fontweight="bold")
+        ax.grid(True, alpha=0.3, linestyle="--")
+        ax.legend(fontsize=8, loc="best")
         ax.set_ylim([1e-10, 10])
         ax.yaxis.set_major_formatter(LogFormatterMathtext())
 
     plt.tight_layout()
 
     # Save figure
-    output_path = 'results/convergence_comparison.png'
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    output_path = "results/convergence_comparison.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"\n✓ Plot saved to {output_path}")
 
 
@@ -219,10 +233,10 @@ def run_precision_degradation_study():
     condition_numbers = np.logspace(1, 3, 10)  # 10 to 1000
 
     precisions = [
-        ('FP64', np.float64, False),
-        ('FP32', np.float32, False),
-        ('FP16', np.float16, False),
-        ('FP8 (simulated)', np.float32, True),
+        ("FP64", np.float64, False),
+        ("FP32", np.float32, False),
+        ("FP16", np.float16, False),
+        ("FP8 (simulated)", np.float32, True),
     ]
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -236,37 +250,45 @@ def run_precision_degradation_study():
 
             try:
                 final_eigenvalue, _ = power_method(
-                    A,
-                    max_iter=500,
-                    dtype=dtype,
-                    simulate_fp8_flag=simulate_fp8_flag
+                    A, max_iter=500, dtype=dtype, simulate_fp8_flag=simulate_fp8_flag
                 )
 
-                relative_error = abs(final_eigenvalue - true_eigenvalue) / abs(true_eigenvalue)
+                relative_error = abs(final_eigenvalue - true_eigenvalue) / abs(
+                    true_eigenvalue
+                )
                 final_errors.append(relative_error)
-            except:
+            except Exception:
                 final_errors.append(np.nan)
 
-        ax.loglog(condition_numbers, final_errors, 'o-', label=precision_name,
-                  linewidth=2, markersize=6, alpha=0.8)
+        ax.loglog(
+            condition_numbers,
+            final_errors,
+            "o-",
+            label=precision_name,
+            linewidth=2,
+            markersize=6,
+            alpha=0.8,
+        )
 
-    ax.set_xlabel('Condition Number', fontsize=12)
-    ax.set_ylabel('Final Relative Error', fontsize=12)
-    ax.set_title('Precision Impact vs Matrix Condition Number', fontsize=14, fontweight='bold')
-    ax.grid(True, alpha=0.3, linestyle='--', which='both')
-    ax.legend(fontsize=10, loc='best')
+    ax.set_xlabel("Condition Number", fontsize=12)
+    ax.set_ylabel("Final Relative Error", fontsize=12)
+    ax.set_title(
+        "Precision Impact vs Matrix Condition Number", fontsize=14, fontweight="bold"
+    )
+    ax.grid(True, alpha=0.3, linestyle="--", which="both")
+    ax.legend(fontsize=10, loc="best")
     ax.xaxis.set_major_formatter(LogFormatterMathtext())
     ax.yaxis.set_major_formatter(LogFormatterMathtext())
 
     plt.tight_layout()
 
     # Save figure
-    output_path = 'results/precision_degradation.png'
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    output_path = "results/precision_degradation.png"
+    plt.savefig(output_path, dpi=300, bbox_inches="tight")
     print(f"\n✓ Plot saved to {output_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("=" * 70)
     print("POWER METHOD PRECISION STUDY")
     print("=" * 70)

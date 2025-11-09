@@ -45,6 +45,7 @@ open http://localhost:8000
 ## Browser Compatibility
 
 Modern browsers with ES6+ support:
+
 - Chrome 90+
 - Firefox 88+
 - Safari 14+
@@ -60,6 +61,7 @@ Modern browsers with ES6+ support:
 ## Educational Focus
 
 This dashboard is designed to clearly demonstrate:
+
 1. How reduced precision affects convergence
 2. Speedup vs accuracy tradeoffs
 3. Relevance to modern AI accelerators (NVIDIA Hopper, AMD MI300)

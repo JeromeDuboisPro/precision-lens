@@ -9,6 +9,7 @@ The web frontend uses a centralized configuration file (`web/config.json`) to ma
 **Location:** `web/config.json`
 
 **Structure:**
+
 ```json
 {
   "matrixSize": 50,
@@ -68,6 +69,7 @@ python scripts/generate_traces.py
 ```
 
 This script:
+
 1. Reads `web/config.json`
 2. Generates trace files for all precision × condition number combinations
 3. Saves files to `web/traces/` using the configured matrix size
@@ -86,11 +88,13 @@ To change the matrix size or other settings:
 ## File Naming Convention
 
 Trace files follow this pattern:
+
 ```
 {precision}_cond{conditionNumber}_n{matrixSize}.json
 ```
 
 Examples:
+
 - `fp32_cond100_n50.json` - FP32, condition number 100, matrix size 50
 - `fp16_cond1000_n50.json` - FP16, condition number 1000, matrix size 50
 
