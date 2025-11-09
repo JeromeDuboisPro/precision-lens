@@ -7,11 +7,13 @@ class PrecisionDashboard {
   constructor() {
     this.traces = {};
     this.currentCondition = 100;
-    this.currentFrame = 0;
+    this.currentTime = 0; // Changed from currentFrame to currentTime
+    this.maxTime = 0; // Maximum time across all precisions
     this.playing = false;
-    this.speed = 1;
+    this.speed = 0.1; // Default to 0.1x (slower playback)
     this.animationInterval = null;
     this.precisions = ['fp64', 'fp32', 'fp16', 'fp8'];
+    this.convergenceTimes = {}; // Store convergence time for each precision
     this.colors = {
       fp64: '#60a5fa', // blue-400
       fp32: '#34d399', // green-400
@@ -93,6 +95,40 @@ class PrecisionDashboard {
     });
 
     return { valid: errors.length === 0, errors };
+  }
+
+  /**
+   * Find the iteration index closest to a given time for a specific precision
+   * @param {string} precision - The precision (fp64, fp32, fp16, fp8)
+   * @param {number} targetTime - The target time in seconds
+   * @returns {number} The iteration index at or just past the target time
+   */
+  findIterationAtTime(precision, targetTime) {
+    const trace = this.traces[precision];
+    if (!trace || !trace.trace || trace.trace.length === 0) return 0;
+
+    const traceData = trace.trace;
+
+    // Handle edge cases
+    if (targetTime <= 0) return 0;
+    if (targetTime >= traceData[traceData.length - 1].cumulative_time) {
+      return traceData.length - 1;
+    }
+
+    // Binary search for efficiency
+    let left = 0;
+    let right = traceData.length - 1;
+
+    while (left < right) {
+      const mid = Math.floor((left + right) / 2);
+      if (traceData[mid].cumulative_time < targetTime) {
+        left = mid + 1;
+      } else {
+        right = mid;
+      }
+    }
+
+    return left;
   }
 
   async init() {
@@ -199,10 +235,35 @@ class PrecisionDashboard {
 
       await Promise.all(loadPromises);
 
+      // Calculate max time across all precisions
+      this.maxTime = Math.max(
+        ...this.precisions.map(
+          p => this.traces[p]?.summary?.total_time_seconds || 0
+        )
+      );
+
+      // Calculate convergence times for each precision
+      this.convergenceTimes = {};
+      this.precisions.forEach(precision => {
+        const trace = this.traces[precision];
+        if (trace && trace.metadata && trace.trace) {
+          const convergenceIter = trace.metadata.convergence_iteration;
+          if (convergenceIter !== undefined && trace.trace[convergenceIter]) {
+            this.convergenceTimes[precision] =
+              trace.trace[convergenceIter].cumulative_time;
+          } else {
+            // If no convergence, use total time
+            this.convergenceTimes[precision] = trace.summary.total_time_seconds;
+          }
+        }
+      });
+
       // Reset to start
       this.reset();
 
       console.log('Traces loaded:', this.currentCondition);
+      console.log('Max time:', this.maxTime);
+      console.log('Convergence times:', this.convergenceTimes);
     } catch (error) {
       console.error('Error loading traces:', error);
       alert(
@@ -226,7 +287,7 @@ class PrecisionDashboard {
       font: { color: '#9ca3af', family: 'Inter, sans-serif' },
       margin: { l: 60, r: 20, t: 20, b: 40 },
       xaxis: {
-        title: 'Iteration',
+        title: 'Time (s)',
         gridcolor: '#374151',
         zerolinecolor: '#4b5563',
       },
@@ -397,24 +458,24 @@ class PrecisionDashboard {
     this.clearAnimation();
 
     // Base frame rate: 60 FPS
-    const frameInterval = 1000 / 60;
+    const FPS = 60;
+    const frameInterval = 1000 / FPS;
 
     this.animationInterval = setInterval(() => {
-      // Advance by speed multiplier
-      this.currentFrame += this.speed;
+      // Advance by (frameInterval * speed) seconds of simulation time
+      // frameInterval is in ms, convert to seconds, then multiply by speed
+      const deltaTime = (frameInterval / 1000) * this.speed;
+      this.currentTime += deltaTime;
 
-      // Find max frames across all precisions
-      const maxFrames = Math.max(
-        ...this.precisions.map(p => this.traces[p]?.trace?.length || 0)
-      );
-
-      if (this.currentFrame >= maxFrames) {
-        this.currentFrame = maxFrames - 1;
+      // Check if we've reached the end
+      if (this.currentTime >= this.maxTime) {
+        this.currentTime = this.maxTime;
+        this.updateAtTime(this.currentTime);
         this.togglePlayPause();
         return;
       }
 
-      this.updateFrame(Math.floor(this.currentFrame));
+      this.updateAtTime(this.currentTime);
     }, frameInterval);
   }
 
@@ -425,7 +486,11 @@ class PrecisionDashboard {
     }
   }
 
-  updateFrame(frameIndex) {
+  /**
+   * Update all graphs and metrics at a specific time
+   * @param {number} targetTime - The target time in seconds
+   */
+  updateAtTime(targetTime) {
     this.precisions.forEach(precision => {
       const trace = this.traces[precision];
       if (
@@ -436,40 +501,53 @@ class PrecisionDashboard {
       )
         return;
 
-      const maxFrame = Math.min(frameIndex, trace.trace.length - 1);
-      const currentData = trace.trace.slice(0, maxFrame + 1);
+      // Find the iteration at this time
+      const iterIdx = this.findIterationAtTime(precision, targetTime);
+      const pointData = trace.trace[iterIdx];
+
+      // Get all data points up to this time
+      const visibleData = trace.trace.filter((p, idx) => idx <= iterIdx);
 
       // Update plot
-      this.updatePlot(precision, currentData);
+      this.updatePlot(precision, visibleData);
 
-      // Update metrics
-      this.updateMetrics(precision, trace.trace[maxFrame]);
+      // Update metrics with iteration count
+      this.updateMetrics(precision, {
+        ...pointData,
+        currentIteration: iterIdx,
+        totalIterations: trace.trace.length,
+      });
 
       // Update status
-      this.updateStatus(precision, trace, maxFrame);
+      this.updateStatus(precision, trace, iterIdx);
+
+      // Show/hide convergence indicator
+      const hasConverged = targetTime >= this.convergenceTimes[precision];
+      this.updateConvergenceStatus(
+        precision,
+        hasConverged,
+        this.convergenceTimes[precision]
+      );
     });
 
-    // Update comparison plot
-    this.updateComparisonPlot(frameIndex);
+    // Update comparison plot (all precisions at this time)
+    this.updateComparisonAtTime(targetTime);
 
     // Update gauges (using FP32 as reference, or first available)
     const refPrecision = this.traces['fp32'] ? 'fp32' : this.precisions[0];
     const refTrace = this.traces[refPrecision];
-    if (refTrace && refTrace.trace[frameIndex]) {
-      this.updateGauges(refTrace.trace[frameIndex]);
+    if (refTrace) {
+      const refIterIdx = this.findIterationAtTime(refPrecision, targetTime);
+      if (refTrace.trace[refIterIdx]) {
+        this.updateGauges(refTrace.trace[refIterIdx]);
+      }
     }
 
     // Update timeline
     this.updateTimeline();
 
     // Update comparison table and insights at end
-    if (
-      frameIndex ===
-      Math.max(
-        ...this.precisions.map(p => this.traces[p]?.trace?.length || 0)
-      ) -
-        1
-    ) {
+    if (targetTime >= this.maxTime * 0.99) {
       this.updateComparison();
       this.generateInsights();
     }
@@ -487,14 +565,14 @@ class PrecisionDashboard {
     );
 
     const update = {
-      x: [validData.map(d => d.iteration)],
+      x: [validData.map(d => d.cumulative_time)], // Changed from iteration to cumulative_time
       y: [validData.map(d => Math.max(d.relative_error, 1e-12))], // Clamp to avoid log(0)
     };
 
     Plotly.restyle(plotDiv, update, [0]);
   }
 
-  updateComparisonPlot(frameIndex) {
+  updateComparisonAtTime(targetTime) {
     const fp64Trace = this.traces['fp64'];
     if (!fp64Trace || !fp64Trace.trace) return;
 
@@ -509,12 +587,17 @@ class PrecisionDashboard {
         return;
       }
 
-      const maxFrame = Math.min(frameIndex, trace.trace.length - 1);
+      // Find max iteration for this precision at targetTime
+      const maxIterIdx = this.findIterationAtTime(precision, targetTime);
       const data = [];
 
-      // Calculate relative difference between eigenvalues for each iteration up to maxFrame
-      for (let i = 0; i <= maxFrame; i++) {
-        const fp64Eigenvalue = fp64Trace.trace[i]?.eigenvalue;
+      // Calculate relative difference between eigenvalues for each iteration up to maxIterIdx
+      for (let i = 0; i <= maxIterIdx; i++) {
+        const currentTime = trace.trace[i].cumulative_time;
+
+        // Find FP64 iteration at the same time
+        const fp64IterIdx = this.findIterationAtTime('fp64', currentTime);
+        const fp64Eigenvalue = fp64Trace.trace[fp64IterIdx]?.eigenvalue;
         const precisionEigenvalue = trace.trace[i]?.eigenvalue;
 
         if (
@@ -530,13 +613,13 @@ class PrecisionDashboard {
             Math.abs(precisionEigenvalue - fp64Eigenvalue) /
             Math.abs(fp64Eigenvalue);
           data.push({
-            iteration: trace.trace[i].iteration,
+            time: currentTime, // Changed from iteration to time
             relativeError: Math.max(relativeError, 1e-12), // Clamp minimum for log scale
           });
         }
       }
 
-      updates.x.push(data.map(d => d.iteration));
+      updates.x.push(data.map(d => d.time)); // Changed from iteration to time
       updates.y.push(data.map(d => d.relativeError));
     });
 
@@ -546,8 +629,14 @@ class PrecisionDashboard {
   updateMetrics(precision, iterData) {
     if (!iterData) return;
 
-    document.getElementById(`iter-${precision}`).textContent =
-      iterData.iteration;
+    // Display iteration count as "currentIteration / totalIterations"
+    const iterText =
+      iterData.currentIteration !== undefined &&
+      iterData.totalIterations !== undefined
+        ? `${iterData.currentIteration} / ${iterData.totalIterations}`
+        : iterData.iteration || '0';
+
+    document.getElementById(`iter-${precision}`).textContent = iterText;
     document.getElementById(`eigenvalue-${precision}`).textContent =
       this.formatEigenvalue(iterData.eigenvalue);
     document.getElementById(`error-${precision}`).textContent =
@@ -594,6 +683,57 @@ class PrecisionDashboard {
     }
   }
 
+  /**
+   * Update convergence status indicator for a precision
+   * @param {string} precision - The precision (fp64, fp32, fp16, fp8)
+   * @param {boolean} hasConverged - Whether the precision has converged at current time
+   * @param {number} convergenceTime - The time at which this precision converged
+   */
+  updateConvergenceStatus(precision, hasConverged, convergenceTime) {
+    const plotDiv = document.getElementById(`plot-${precision}`);
+    if (!plotDiv || !this.traces[precision]) return;
+
+    const layout = {
+      shapes: [],
+      annotations: [],
+    };
+
+    if (hasConverged && convergenceTime > 0) {
+      // Add vertical line at convergence time
+      layout.shapes.push({
+        type: 'line',
+        x0: convergenceTime,
+        x1: convergenceTime,
+        y0: 0,
+        y1: 1,
+        yref: 'paper',
+        line: {
+          color: '#10b981', // green
+          width: 2,
+          dash: 'dash',
+        },
+      });
+
+      // Add annotation
+      layout.annotations.push({
+        x: convergenceTime,
+        y: 0.95,
+        yref: 'paper',
+        text: '✓ Converged',
+        showarrow: false,
+        bgcolor: 'rgba(16, 185, 129, 0.2)',
+        bordercolor: '#10b981',
+        borderwidth: 1,
+        font: {
+          size: 10,
+          color: '#10b981',
+        },
+      });
+    }
+
+    Plotly.relayout(plotDiv, layout);
+  }
+
   updateGauges(iterData) {
     if (!iterData) return;
 
@@ -617,24 +757,16 @@ class PrecisionDashboard {
   }
 
   updateTimeline() {
-    const maxFrames = Math.max(
-      ...this.precisions.map(p => this.traces[p]?.trace?.length || 0)
-    );
-
-    const percent = (this.currentFrame / maxFrames) * 100;
+    // Calculate percentage based on time
+    const percent =
+      this.maxTime > 0 ? (this.currentTime / this.maxTime) * 100 : 0;
     document.getElementById('timeline').value = percent;
 
     // Update time display
-    const refTrace = this.traces['fp32'] || this.traces[this.precisions[0]];
-    if (refTrace && refTrace.trace && refTrace.summary) {
-      const currentTime =
-        refTrace.trace[Math.floor(this.currentFrame)]?.cumulative_time || 0;
-      const maxTime = refTrace.summary.total_time_seconds;
-
-      document.getElementById('currentTime').textContent =
-        `${currentTime.toFixed(4)}s`;
-      document.getElementById('maxTime').textContent = `${maxTime.toFixed(4)}s`;
-    }
+    document.getElementById('currentTime').textContent =
+      `${this.currentTime.toFixed(4)}s`;
+    document.getElementById('maxTime').textContent =
+      `${this.maxTime.toFixed(4)}s`;
   }
 
   updateComparison() {
@@ -876,30 +1008,26 @@ class PrecisionDashboard {
   }
 
   seekToPercent(percent) {
-    const maxFrames = Math.max(
-      ...this.precisions.map(p => this.traces[p]?.trace?.length || 0)
-    );
-
-    this.currentFrame = Math.floor((percent / 100) * maxFrames);
-    this.updateFrame(this.currentFrame);
+    this.currentTime = (percent / 100) * this.maxTime;
+    this.updateAtTime(this.currentTime);
   }
 
   reset() {
     this.playing = false;
-    this.currentFrame = 0;
+    this.currentTime = 0;
     this.clearAnimation();
 
     document.getElementById('playIcon').textContent = '▶';
     document.getElementById('playText').textContent = 'Play';
 
-    this.updateFrame(0);
+    this.updateAtTime(0);
     this.updateComparison();
     this.generateInsights();
   }
 
   updateUI() {
     // Initial update
-    this.updateFrame(0);
+    this.updateAtTime(0);
     this.updateComparison();
     this.generateInsights();
   }
