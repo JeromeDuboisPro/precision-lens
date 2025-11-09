@@ -3,7 +3,7 @@
 
 import json
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 
 def analyze_trace_file(file_path: Path) -> Dict:
@@ -28,7 +28,12 @@ def analyze_trace_file(file_path: Path) -> Dict:
 def load_trace_results():
     """Load and collect all trace file results."""
     trace_dirs = [Path("algorithms/power_method/traces"), Path("web/traces")]
-    results_by_precision = {"FP8": [], "FP16": [], "FP32": [], "FP64": []}
+    results_by_precision: Dict[str, List[Dict]] = {
+        "FP8": [],
+        "FP16": [],
+        "FP32": [],
+        "FP64": [],
+    }
 
     for trace_dir in trace_dirs:
         if not trace_dir.exists():
