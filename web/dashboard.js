@@ -13,7 +13,6 @@ class PrecisionDashboard {
     this.speed = 0.1; // Default to 0.1x (slower playback)
     this.animationInterval = null;
     this.precisions = ['fp64', 'fp32', 'fp16', 'fp8'];
-    this.convergenceTimes = {}; // Store convergence time for each precision
     this.colors = {
       fp64: '#60a5fa', // blue-400
       fp32: '#34d399', // green-400
@@ -242,28 +241,11 @@ class PrecisionDashboard {
         )
       );
 
-      // Calculate convergence times for each precision
-      this.convergenceTimes = {};
-      this.precisions.forEach(precision => {
-        const trace = this.traces[precision];
-        if (trace && trace.metadata && trace.trace) {
-          const convergenceIter = trace.metadata.convergence_iteration;
-          if (convergenceIter !== undefined && trace.trace[convergenceIter]) {
-            this.convergenceTimes[precision] =
-              trace.trace[convergenceIter].cumulative_time;
-          } else {
-            // If no convergence, use total time
-            this.convergenceTimes[precision] = trace.summary.total_time_seconds;
-          }
-        }
-      });
-
       // Reset to start
       this.reset();
 
       console.log('Traces loaded:', this.currentCondition);
       console.log('Max time:', this.maxTime);
-      console.log('Convergence times:', this.convergenceTimes);
     } catch (error) {
       console.error('Error loading traces:', error);
       alert(
@@ -520,14 +502,6 @@ class PrecisionDashboard {
 
       // Update status
       this.updateStatus(precision, trace, iterIdx);
-
-      // Show/hide convergence indicator
-      const hasConverged = targetTime >= this.convergenceTimes[precision];
-      this.updateConvergenceStatus(
-        precision,
-        hasConverged,
-        this.convergenceTimes[precision]
-      );
     });
 
     // Update comparison plot (all precisions at this time)
@@ -681,57 +655,6 @@ class PrecisionDashboard {
       statusEl.className =
         'px-3 py-1 rounded-full text-xs font-medium status-running';
     }
-  }
-
-  /**
-   * Update convergence status indicator for a precision
-   * @param {string} precision - The precision (fp64, fp32, fp16, fp8)
-   * @param {boolean} hasConverged - Whether the precision has converged at current time
-   * @param {number} convergenceTime - The time at which this precision converged
-   */
-  updateConvergenceStatus(precision, hasConverged, convergenceTime) {
-    const plotDiv = document.getElementById(`plot-${precision}`);
-    if (!plotDiv || !this.traces[precision]) return;
-
-    const layout = {
-      shapes: [],
-      annotations: [],
-    };
-
-    if (hasConverged && convergenceTime > 0) {
-      // Add vertical line at convergence time
-      layout.shapes.push({
-        type: 'line',
-        x0: convergenceTime,
-        x1: convergenceTime,
-        y0: 0,
-        y1: 1,
-        yref: 'paper',
-        line: {
-          color: '#10b981', // green
-          width: 2,
-          dash: 'dash',
-        },
-      });
-
-      // Add annotation
-      layout.annotations.push({
-        x: convergenceTime,
-        y: 0.95,
-        yref: 'paper',
-        text: '✓ Converged',
-        showarrow: false,
-        bgcolor: 'rgba(16, 185, 129, 0.2)',
-        bordercolor: '#10b981',
-        borderwidth: 1,
-        font: {
-          size: 10,
-          color: '#10b981',
-        },
-      });
-    }
-
-    Plotly.relayout(plotDiv, layout);
   }
 
   updateGauges(iterData) {
