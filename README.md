@@ -60,14 +60,14 @@ python scripts/generate_traces.py
 
 Using the power method for eigenvalue computation (matrix size: 50):
 
-| Precision | Speedup | Final Error | Use Case |
-|-----------|---------|-------------|----------|
-| **FP64** | 1.0× | ~10⁻¹⁰ | Reference baseline |
-| **FP32** | 4-5× | ~10⁻⁶ | Most scientific computing |
-| **FP16** | 20× | ~10⁻² | ML training, well-conditioned problems |
-| **FP8** | 70-80× | ~10-20% | ML inference with error tolerance |
+| Precision | Theoretical Speedup | Convergence Behavior | Use Case |
+|-----------|-------------------|----------------------|----------|
+| **FP64** | 1.0× | Highest accuracy (~10⁻⁹) | Reference baseline |
+| **FP32** | 2.0× | Good accuracy (~10⁻⁸) | Most scientific computing |
+| **FP16** | 4.0× | Moderate accuracy (~10⁻⁴) | ML training, well-conditioned problems |
+| **FP8** | 8.0× | Limited accuracy (~10⁻²) | ML inference with error tolerance |
 
-**Insight**: FP32 achieves 4-5× speedup with negligible accuracy loss for most applications. FP8 shows dramatic speedup but requires careful validation.
+**Insight**: Speedup reflects theoretical memory bandwidth advantage (dtype size ratio). Lower precision trades accuracy for throughput - FP8 converges in 3 iterations vs FP64's 500, but stops at 9% error vs 10⁻⁹. Perfect for demonstrating precision-performance frontiers in GPU math libraries.
 
 ## 🛠️ Project Structure
 
@@ -108,6 +108,46 @@ Perfect for:
 - Theoretical FLOPS: 2n² + n operations per iteration
 - Memory bandwidth: (n² + 2n) × bytes per element
 - Convergence: Relative error vs iteration count
+
+## 🚀 Advanced Algorithms
+
+### Cascading Precision Strategy
+
+Instead of committing to a single precision, **cascade through precisions** dynamically:
+
+**FP8 → FP16 → FP32 → FP64**
+
+- Start fast with FP8 for rapid initial convergence
+- Transition to FP16 when IEEE754 threshold reached (relative error < 10⁻¹)
+- Escalate to FP32/FP64 only when higher accuracy needed
+- Carry eigenvector state across transitions for efficiency
+
+**Benefits**:
+- **Adaptive robustness**: Guaranteed convergence via precision escalation
+- **Time-to-solution**: Minimize wall-clock time for target accuracy
+- **Hardware efficiency**: Maximize throughput in early iterations
+
+### Collaborative Multi-Precision Ensemble
+
+Run **all four precisions in parallel** with competitive collaboration:
+
+**Architecture**:
+- Each solver (FP8/16/32/64) runs independently with shared state
+- Solvers asynchronously exchange best eigenvalue/eigenvector estimates
+- Fast precisions (FP8/16) explore search space; slower ones (FP32/64) refine
+- **Competitive convergence**: Best estimate at each step drives the ensemble
+
+**Synchronization**:
+- Solvers compete for "ground truth" - most accurate estimate wins
+- Lower precisions adjust search direction based on higher-precision feedback
+- Converge when all solvers agree within tolerance threshold
+
+**Research Questions**:
+- Can FP8's exploration speed + FP64's accuracy outperform single-precision?
+- Optimal weighting strategies for ensemble predictions?
+- Communication overhead vs convergence acceleration tradeoffs?
+
+These algorithms explore the **frontier of mixed-precision numerical computing** - a critical area for modern GPU math libraries and AI accelerator design.
 
 ## 🔗 Relevant Context
 
