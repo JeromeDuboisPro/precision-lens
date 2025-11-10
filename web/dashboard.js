@@ -198,7 +198,15 @@ class PrecisionDashboard {
     // Card click handlers for expand/collapse functionality
     this.precisions.forEach(precision => {
       const card = document.querySelector(
-        `[class*="border-${precision === 'fp64' ? 'blue' : precision === 'fp32' ? 'green' : precision === 'fp16' ? 'yellow' : 'orange'}"]`
+        `[class*="border-${
+          precision === 'fp64'
+            ? 'blue'
+            : precision === 'fp32'
+              ? 'green'
+              : precision === 'fp16'
+                ? 'yellow'
+                : 'orange'
+        }"]`
       );
       if (card) {
         card.style.cursor = 'pointer';
@@ -871,8 +879,9 @@ class PrecisionDashboard {
     // Update time display
     document.getElementById('currentTime').textContent =
       `${this.currentTime.toFixed(4)}s`;
-    document.getElementById('maxTime').textContent =
-      `${this.maxTime.toFixed(4)}s`;
+    document.getElementById('maxTime').textContent = `${this.maxTime.toFixed(
+      4
+    )}s`;
   }
 
   updateComparison() {

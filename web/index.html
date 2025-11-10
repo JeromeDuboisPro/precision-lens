@@ -123,115 +123,202 @@
     <div class="max-w-7xl mx-auto px-6 py-8">
       <!-- Unified Convergence Plot -->
       <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
-        <h3 class="text-xl font-semibold mb-4">Convergence Race: All Precisions</h3>
+        <h3 class="text-xl font-semibold mb-4">
+          Convergence Race: All Precisions
+        </h3>
         <div id="plot-unified" class="h-96"></div>
       </div>
 
       <!-- Compact Performance Grid -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <!-- FP64 Card -->
-        <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-blue-500/30 hover:border-blue-500/60 transition-all">
+        <div
+          class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-blue-500/30 hover:border-blue-500/60 transition-all"
+        >
           <div class="text-center mb-3">
             <h3 class="text-lg font-bold text-blue-400">FP64</h3>
             <div class="text-xs text-gray-400">Double Precision</div>
           </div>
           <div class="space-y-2">
             <div class="bg-gray-900/50 rounded px-3 py-2">
-              <div class="text-4xl font-bold text-blue-400 text-center">1.0×</div>
-              <div class="text-xs text-gray-400 text-center" title="Theoretical memory bandwidth speedup">Speedup</div>
+              <div class="text-4xl font-bold text-blue-400 text-center">
+                1.0×
+              </div>
+              <div
+                class="text-xs text-gray-400 text-center"
+                title="Theoretical memory bandwidth speedup"
+              >
+                Speedup
+              </div>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div class="bg-gray-900/50 rounded p-2">
                 <div class="text-gray-400">Error</div>
-                <div id="error-fp64-compact" class="font-semibold text-blue-300">—</div>
+                <div
+                  id="error-fp64-compact"
+                  class="font-semibold text-blue-300"
+                >
+                  —
+                </div>
               </div>
               <div class="bg-gray-900/50 rounded p-2">
                 <div class="text-gray-400">Time</div>
-                <div id="time-fp64-compact" class="font-semibold text-blue-300">—</div>
+                <div id="time-fp64-compact" class="font-semibold text-blue-300">
+                  —
+                </div>
               </div>
             </div>
-            <div id="status-fp64" class="text-xs text-center px-2 py-1 rounded-full bg-gray-700 text-gray-400">
+            <div
+              id="status-fp64"
+              class="text-xs text-center px-2 py-1 rounded-full bg-gray-700 text-gray-400"
+            >
               Ready
             </div>
           </div>
         </div>
 
         <!-- FP32 Card -->
-        <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-green-500/30 hover:border-green-500/60 transition-all">
+        <div
+          class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-green-500/30 hover:border-green-500/60 transition-all"
+        >
           <div class="text-center mb-3">
             <h3 class="text-lg font-bold text-green-400">FP32</h3>
             <div class="text-xs text-gray-400">Single Precision</div>
           </div>
           <div class="space-y-2">
             <div class="bg-gray-900/50 rounded px-3 py-2">
-              <div class="text-4xl font-bold text-green-400 text-center">2.0×</div>
-              <div class="text-xs text-gray-400 text-center" title="Theoretical memory bandwidth speedup">Speedup</div>
+              <div class="text-4xl font-bold text-green-400 text-center">
+                2.0×
+              </div>
+              <div
+                class="text-xs text-gray-400 text-center"
+                title="Theoretical memory bandwidth speedup"
+              >
+                Speedup
+              </div>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div class="bg-gray-900/50 rounded p-2">
                 <div class="text-gray-400">Error</div>
-                <div id="error-fp32-compact" class="font-semibold text-green-300">—</div>
+                <div
+                  id="error-fp32-compact"
+                  class="font-semibold text-green-300"
+                >
+                  —
+                </div>
               </div>
               <div class="bg-gray-900/50 rounded p-2">
                 <div class="text-gray-400">Time</div>
-                <div id="time-fp32-compact" class="font-semibold text-green-300">—</div>
+                <div
+                  id="time-fp32-compact"
+                  class="font-semibold text-green-300"
+                >
+                  —
+                </div>
               </div>
             </div>
-            <div id="status-fp32" class="text-xs text-center px-2 py-1 rounded-full bg-gray-700 text-gray-400">
+            <div
+              id="status-fp32"
+              class="text-xs text-center px-2 py-1 rounded-full bg-gray-700 text-gray-400"
+            >
               Ready
             </div>
           </div>
         </div>
 
         <!-- FP16 Card -->
-        <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-yellow-500/30 hover:border-yellow-500/60 transition-all">
+        <div
+          class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-yellow-500/30 hover:border-yellow-500/60 transition-all"
+        >
           <div class="text-center mb-3">
             <h3 class="text-lg font-bold text-yellow-400">FP16</h3>
             <div class="text-xs text-gray-400">Half Precision</div>
           </div>
           <div class="space-y-2">
             <div class="bg-gray-900/50 rounded px-3 py-2">
-              <div class="text-4xl font-bold text-yellow-400 text-center">4.0×</div>
-              <div class="text-xs text-gray-400 text-center" title="Theoretical memory bandwidth speedup">Speedup</div>
+              <div class="text-4xl font-bold text-yellow-400 text-center">
+                4.0×
+              </div>
+              <div
+                class="text-xs text-gray-400 text-center"
+                title="Theoretical memory bandwidth speedup"
+              >
+                Speedup
+              </div>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div class="bg-gray-900/50 rounded p-2">
                 <div class="text-gray-400">Error</div>
-                <div id="error-fp16-compact" class="font-semibold text-yellow-300">—</div>
+                <div
+                  id="error-fp16-compact"
+                  class="font-semibold text-yellow-300"
+                >
+                  —
+                </div>
               </div>
               <div class="bg-gray-900/50 rounded p-2">
                 <div class="text-gray-400">Time</div>
-                <div id="time-fp16-compact" class="font-semibold text-yellow-300">—</div>
+                <div
+                  id="time-fp16-compact"
+                  class="font-semibold text-yellow-300"
+                >
+                  —
+                </div>
               </div>
             </div>
-            <div id="status-fp16" class="text-xs text-center px-2 py-1 rounded-full bg-gray-700 text-gray-400">
+            <div
+              id="status-fp16"
+              class="text-xs text-center px-2 py-1 rounded-full bg-gray-700 text-gray-400"
+            >
               Ready
             </div>
           </div>
         </div>
 
         <!-- FP8 Card -->
-        <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-orange-500/30 hover:border-orange-500/60 transition-all">
+        <div
+          class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-orange-500/30 hover:border-orange-500/60 transition-all"
+        >
           <div class="text-center mb-3">
             <h3 class="text-lg font-bold text-orange-400">FP8</h3>
             <div class="text-xs text-gray-400">Simulated</div>
           </div>
           <div class="space-y-2">
             <div class="bg-gray-900/50 rounded px-3 py-2">
-              <div class="text-4xl font-bold text-orange-400 text-center">8.0×</div>
-              <div class="text-xs text-gray-400 text-center" title="Theoretical memory bandwidth speedup">Speedup</div>
+              <div class="text-4xl font-bold text-orange-400 text-center">
+                8.0×
+              </div>
+              <div
+                class="text-xs text-gray-400 text-center"
+                title="Theoretical memory bandwidth speedup"
+              >
+                Speedup
+              </div>
             </div>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <div class="bg-gray-900/50 rounded p-2">
                 <div class="text-gray-400">Error</div>
-                <div id="error-fp8-compact" class="font-semibold text-orange-300">—</div>
+                <div
+                  id="error-fp8-compact"
+                  class="font-semibold text-orange-300"
+                >
+                  —
+                </div>
               </div>
               <div class="bg-gray-900/50 rounded p-2">
                 <div class="text-gray-400">Time</div>
-                <div id="time-fp8-compact" class="font-semibold text-orange-300">—</div>
+                <div
+                  id="time-fp8-compact"
+                  class="font-semibold text-orange-300"
+                >
+                  —
+                </div>
               </div>
             </div>
-            <div id="status-fp8" class="text-xs text-center px-2 py-1 rounded-full bg-gray-700 text-gray-400">
+            <div
+              id="status-fp8"
+              class="text-xs text-center px-2 py-1 rounded-full bg-gray-700 text-gray-400"
+            >
               Ready
             </div>
           </div>
