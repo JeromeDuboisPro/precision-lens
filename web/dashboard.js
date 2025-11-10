@@ -20,6 +20,8 @@ class PrecisionDashboard {
       fp8: '#fb923c', // orange-400
     };
     this.config = null; // Will be loaded from config.json
+    this.highlightedPrecision = null; // For click-to-highlight feature
+    this.expandedCard = null; // For expandable card feature
 
     this.init();
   }
@@ -192,6 +194,21 @@ class PrecisionDashboard {
     document.getElementById('resetBtn').addEventListener('click', () => {
       this.reset();
     });
+
+    // Card click handlers for expand/collapse functionality
+    this.precisions.forEach(precision => {
+      const card = document.querySelector(
+        `[class*="border-${precision === 'fp64' ? 'blue' : precision === 'fp32' ? 'green' : precision === 'fp16' ? 'yellow' : 'orange'}"]`
+      );
+      if (card) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', e => {
+          // Don't trigger if clicking on a child element that's interactive
+          if (e.target.closest('button, a, input')) return;
+          this.toggleHighlight(precision);
+        });
+      }
+    });
   }
 
   async loadTraces(conditionNumber) {
@@ -241,6 +258,9 @@ class PrecisionDashboard {
         )
       );
 
+      // Calculate and display speedups based on total convergence time
+      this.updateSpeedupDisplays();
+
       // Reset to start
       this.reset();
 
@@ -263,11 +283,17 @@ class PrecisionDashboard {
   }
 
   initPlots() {
-    const layout = {
+    const config = {
+      responsive: true,
+      displayModeBar: false,
+    };
+
+    // Initialize unified convergence plot with all 4 precisions
+    const unifiedLayout = {
       paper_bgcolor: '#1f2937',
       plot_bgcolor: '#111827',
       font: { color: '#9ca3af', family: 'Inter, sans-serif' },
-      margin: { l: 60, r: 20, t: 20, b: 40 },
+      margin: { l: 60, r: 20, t: 20, b: 50 },
       xaxis: {
         title: 'Time (s)',
         gridcolor: '#374151',
@@ -280,36 +306,54 @@ class PrecisionDashboard {
         gridcolor: '#374151',
         zerolinecolor: '#4b5563',
       },
-      showlegend: false,
+      showlegend: true,
+      legend: {
+        x: 1,
+        xanchor: 'right',
+        y: 1,
+        yanchor: 'top',
+        bgcolor: 'rgba(31, 41, 55, 0.9)',
+        bordercolor: '#374151',
+        borderwidth: 1,
+      },
+      hovermode: 'closest',
     };
 
-    const config = {
-      responsive: true,
-      displayModeBar: false,
-    };
+    const unifiedData = this.precisions.map(precision => ({
+      x: [],
+      y: [],
+      type: 'scatter',
+      mode: 'lines',
+      name: precision.toUpperCase(),
+      line: {
+        color: this.colors[precision],
+        width: 3,
+      },
+      hovertemplate: '%{y:.2e}<extra>' + precision.toUpperCase() + '</extra>',
+    }));
 
-    // Initialize empty plots for each precision
-    this.precisions.forEach(precision => {
-      const plotDiv = document.getElementById(`plot-${precision}`);
-      const data = [
-        {
-          x: [],
-          y: [],
-          type: 'scatter',
-          mode: 'lines',
-          line: {
-            color: this.colors[precision],
-            width: 2,
-          },
-        },
-      ];
+    const plotDiv = document.getElementById('plot-unified');
+    Plotly.newPlot(plotDiv, unifiedData, unifiedLayout, config);
 
-      Plotly.newPlot(plotDiv, data, layout, config);
+    // Add click handler for highlighting
+    plotDiv.on('plotly_click', data => {
+      if (data.points && data.points.length > 0) {
+        const precision = this.precisions[data.points[0].curveNumber];
+        this.toggleHighlight(precision);
+      }
     });
 
     // Initialize comparison plot (FP32, FP16, FP8 eigenvalue errors vs FP64)
     const comparisonLayout = {
-      ...layout,
+      paper_bgcolor: '#1f2937',
+      plot_bgcolor: '#111827',
+      font: { color: '#9ca3af', family: 'Inter, sans-serif' },
+      margin: { l: 60, r: 20, t: 20, b: 50 },
+      xaxis: {
+        title: 'Time (s)',
+        gridcolor: '#374151',
+        zerolinecolor: '#4b5563',
+      },
       yaxis: {
         title: 'Relative Error vs FP64 Eigenvalue',
         type: 'log',
@@ -473,6 +517,9 @@ class PrecisionDashboard {
    * @param {number} targetTime - The target time in seconds
    */
   updateAtTime(targetTime) {
+    // Update unified plot showing all precisions
+    this.updateUnifiedPlot(targetTime);
+
     this.precisions.forEach(precision => {
       const trace = this.traces[precision];
       if (
@@ -487,14 +534,8 @@ class PrecisionDashboard {
       const iterIdx = this.findIterationAtTime(precision, targetTime);
       const pointData = trace.trace[iterIdx];
 
-      // Get all data points up to this time
-      const visibleData = trace.trace.filter((p, idx) => idx <= iterIdx);
-
-      // Update plot
-      this.updatePlot(precision, visibleData);
-
-      // Update metrics with iteration count
-      this.updateMetrics(precision, {
+      // Update compact card metrics
+      this.updateCompactCardMetrics(precision, {
         ...pointData,
         currentIteration: iterIdx,
         totalIterations: trace.trace.length,
@@ -622,6 +663,148 @@ class PrecisionDashboard {
       this.formatFlops(iterData.theoretical_flops);
     document.getElementById(`bandwidth-${precision}`).textContent =
       this.formatBandwidth(iterData.theoretical_bandwidth_gbps);
+  }
+
+  updateCompactCardMetrics(precision, iterData) {
+    if (!iterData) return;
+
+    // Update compact card error and time
+    const errorEl = document.getElementById(`error-${precision}-compact`);
+    const timeEl = document.getElementById(`time-${precision}-compact`);
+
+    if (errorEl) {
+      errorEl.textContent = this.formatError(iterData.relative_error);
+    }
+    if (timeEl) {
+      timeEl.textContent = this.formatTime(iterData.cumulative_time);
+    }
+  }
+
+  updateSpeedupDisplays() {
+    // Calculate theoretical speedup based on memory bandwidth (dtype_bytes ratio)
+    // This represents hardware advantage: smaller data types = higher throughput
+    const fp64Bytes = this.traces['fp64']?.metadata?.dtype_bytes;
+    if (!fp64Bytes) return;
+
+    this.precisions.forEach(precision => {
+      const trace = this.traces[precision];
+      if (!trace || !trace.metadata) return;
+
+      const precisionBytes = trace.metadata.dtype_bytes;
+
+      // Theoretical speedup = FP64 bytes / precision bytes
+      // This reflects memory bandwidth advantage (e.g., 8 bytes / 1 byte = 8× for FP8)
+      const speedup = fp64Bytes / precisionBytes;
+
+      // Find card by looking for the precision name heading
+      const cards = document.querySelectorAll('.bg-gradient-to-br');
+      for (const card of cards) {
+        const heading = card.querySelector('h3');
+        if (heading && heading.textContent.trim() === precision.toUpperCase()) {
+          const speedupEl = card.querySelector('.text-4xl');
+          if (speedupEl) {
+            speedupEl.textContent = speedup.toFixed(1) + '×';
+          }
+          break;
+        }
+      }
+    });
+  }
+
+  updateUnifiedPlot(targetTime) {
+    const updates = { x: [], y: [] };
+
+    this.precisions.forEach((precision, index) => {
+      const trace = this.traces[precision];
+      if (!trace || !trace.trace) {
+        updates.x.push([]);
+        updates.y.push([]);
+        return;
+      }
+
+      const maxIterIdx = this.findIterationAtTime(precision, targetTime);
+      const visibleData = trace.trace
+        .slice(0, maxIterIdx + 1)
+        .filter(d => d.relative_error > 0 && isFinite(d.relative_error))
+        .map(d => ({
+          time: d.cumulative_time,
+          error: Math.max(d.relative_error, 1e-16), // Clamp for log scale
+        }));
+
+      updates.x.push(visibleData.map(d => d.time));
+      updates.y.push(visibleData.map(d => d.error));
+    });
+
+    Plotly.restyle('plot-unified', updates, [0, 1, 2, 3]);
+  }
+
+  toggleHighlight(precision) {
+    if (this.highlightedPrecision === precision) {
+      // Unhighlight - restore all lines to normal
+      this.highlightedPrecision = null;
+      const lineUpdates = {
+        'line.width': [3, 3, 3, 3],
+        'line.dash': ['solid', 'solid', 'solid', 'solid'],
+        opacity: [1, 1, 1, 1],
+      };
+      Plotly.restyle('plot-unified', lineUpdates, [0, 1, 2, 3]);
+
+      // Remove card highlighting
+      this.precisions.forEach(p => {
+        const cardColors = {
+          fp64: 'blue',
+          fp32: 'green',
+          fp16: 'yellow',
+          fp8: 'orange',
+        };
+        const card = document.querySelector(
+          `[class*="border-${cardColors[p]}-500"]`
+        );
+        if (card) {
+          card.style.transform = '';
+          card.style.boxShadow = '';
+        }
+      });
+    } else {
+      // Highlight selected precision
+      this.highlightedPrecision = precision;
+      const precisionIndex = this.precisions.indexOf(precision);
+
+      const lineUpdates = {
+        'line.width': [1, 1, 1, 1],
+        'line.dash': ['dot', 'dot', 'dot', 'dot'],
+        opacity: [0.3, 0.3, 0.3, 0.3],
+      };
+
+      // Make selected precision prominent
+      lineUpdates['line.width'][precisionIndex] = 5;
+      lineUpdates['line.dash'][precisionIndex] = 'solid';
+      lineUpdates.opacity[precisionIndex] = 1;
+
+      Plotly.restyle('plot-unified', lineUpdates, [0, 1, 2, 3]);
+
+      // Highlight corresponding card
+      const cardColors = {
+        fp64: 'blue',
+        fp32: 'green',
+        fp16: 'yellow',
+        fp8: 'orange',
+      };
+      this.precisions.forEach(p => {
+        const card = document.querySelector(
+          `[class*="border-${cardColors[p]}-500"]`
+        );
+        if (card) {
+          if (p === precision) {
+            card.style.transform = 'translateY(-8px) scale(1.05)';
+            card.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.7)';
+          } else {
+            card.style.transform = '';
+            card.style.boxShadow = '';
+          }
+        }
+      });
+    }
   }
 
   updateStatus(precision, trace, frameIndex) {
