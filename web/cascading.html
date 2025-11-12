@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cascading Precision Strategy - PrecisionLens</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Plotly.js for charts -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <!-- Custom styling -->
+    <link rel="stylesheet" href="style.css" />
+
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-gray-100">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-900 to-purple-900 py-12 px-6">
+      <div class="max-w-7xl mx-auto">
+        <h1
+          class="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400"
+        >
+          Cascading Precision Strategy
+        </h1>
+        <p class="text-2xl text-gray-300 mb-6">
+          Adaptive Precision Escalation: FP8 → FP16 → FP32 → FP64
+        </p>
+        <p class="text-lg text-gray-400 max-w-3xl">
+          Start fast with FP8 for rapid initial convergence, automatically
+          transition to higher precision when needed. Balances speed and
+          accuracy adaptively.
+        </p>
+        <div class="mt-6">
+          <a
+            href="index.html"
+            class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            ← Back to Main Dashboard
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <div class="max-w-7xl mx-auto px-6 py-8">
+      <!-- Condition Number Selector -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+        <div class="flex items-center gap-6">
+          <label class="text-lg font-medium text-gray-300">
+            Condition Number:
+          </label>
+          <select
+            id="conditionSelector"
+            class="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+          >
+            <option value="10">10 (Well-conditioned)</option>
+            <option value="100" selected>100 (Moderate)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Convergence Timeline -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+        <h3 class="text-xl font-semibold mb-4">Precision Cascade Timeline</h3>
+        <div id="plot-timeline" class="h-96"></div>
+        <p class="text-sm text-gray-400 mt-4">
+          This plot shows how the algorithm transitions through different
+          precision levels (colored bands) as it converges. Each precision level
+          contributes to reducing error until its limit is reached.
+        </p>
+      </div>
+
+      <!-- Residual Convergence -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+        <h3 class="text-xl font-semibold mb-4">Residual Norm Convergence</h3>
+        <div id="plot-residual" class="h-96"></div>
+        <p class="text-sm text-gray-400 mt-4">
+          Residual norm ||A*x - λ*x|| measures solution quality without knowing
+          the true eigenvalue. Precision-aware stopping uses both residual and
+          eigenvalue change criteria for robust convergence detection.
+        </p>
+      </div>
+
+      <!-- Precision Segments Summary -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+        <h3 class="text-xl font-semibold mb-4">Precision Segments</h3>
+        <div
+          id="segments-grid"
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Comparison: Cascading vs Single Precision -->
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+        <h3 class="text-xl font-semibold mb-4">Performance Comparison</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-700">
+                <th class="text-left py-3 text-gray-400 font-medium">
+                  Strategy
+                </th>
+                <th class="text-right py-3 text-gray-400 font-medium">
+                  Total Iterations
+                </th>
+                <th class="text-right py-3 text-gray-400 font-medium">
+                  Total Time
+                </th>
+                <th class="text-right py-3 text-gray-400 font-medium">
+                  Final Error
+                </th>
+                <th class="text-right py-3 text-gray-400 font-medium">
+                  Speedup
+                </th>
+              </tr>
+            </thead>
+            <tbody id="comparisonTableBody" class="text-gray-300">
+              <!-- Populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+        <p class="text-sm text-gray-400 mt-4">
+          Cascading strategy achieves target accuracy faster by leveraging fast
+          initial convergence of lower precisions, then escalating only when
+          needed.
+        </p>
+      </div>
+
+      <!-- Insights Panel -->
+      <div
+        class="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg p-6 border border-blue-800/50"
+      >
+        <h3 class="text-xl font-semibold mb-4">💡 Key Insights</h3>
+        <div id="insightsPanel" class="space-y-3 text-gray-300">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-gray-700 py-8 mt-12">
+      <div class="max-w-7xl mx-auto px-6 text-center text-gray-400">
+        <p class="mb-2">
+          <strong>PrecisionLens</strong> - Exploring precision-performance
+          frontiers in numerical computing
+        </p>
+        <p class="text-sm">
+          Cascading precision strategy demonstrates adaptive algorithm design
+          for modern GPU math libraries.
+        </p>
+        <p class="mt-4 text-xs">
+          <a
+            href="https://github.com/JeromeDuboisPro/precision-lens"
+            class="text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            View on GitHub
+          </a>
+        </p>
+      </div>
+    </footer>
+
+    <!-- Dashboard JavaScript -->
+    <script src="cascading.js"></script>
+  </body>
+</html>
