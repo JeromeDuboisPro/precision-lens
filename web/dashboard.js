@@ -722,7 +722,7 @@ class PrecisionDashboard {
   updateUnifiedPlot(targetTime) {
     const updates = { x: [], y: [] };
 
-    this.precisions.forEach((precision, index) => {
+    this.precisions.forEach(precision => {
       const trace = this.traces[precision];
       if (!trace || !trace.trace) {
         updates.x.push([]);
